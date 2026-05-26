@@ -51,3 +51,8 @@ __v0_devtools.tsx
 __v0_jsx-dev-runtime.ts
 instrumentation-client.js
 instrumentation-client.ts
+
+
+# Local seed and database maintenance scripts
+/backend/src/seeds/
+/backend/src/utils/seeder.js
