@@ -1,0 +1,299 @@
+/* Stunning Map Styles - Professional & Beautiful */
+
+/* Enhanced animations */
+@keyframes markerDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8) rotate(-10deg);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(5px) scale(1.1) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.8);
+  }
+}
+
+/* Stunning markers */
+.stunning-marker {
+  animation: markerDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stunning-marker:hover {
+  transform: scale(1.15) translateY(-5px);
+  filter: brightness(1.2) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
+}
+
+/* Enhanced popup styles */
+.stunning-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 20px !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.stunning-popup .leaflet-popup-content {
+  margin: 0 !important;
+  font-family: system-ui !important;
+}
+
+.stunning-popup .leaflet-popup-tip {
+  display: none !important;
+}
+
+.stunning-popup .leaflet-popup-close-button {
+  display: none !important;
+}
+
+/* Glass card enhancements */
+.glass-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Button enhancements */
+.btn-gradient {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600 !important;
+  padding: 12px 24px !important;
+  border-radius: 12px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+}
+
+.btn-gradient:hover {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Search input enhancements */
+.search-input {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  padding: 16px 20px !important;
+  border-radius: 16px !important;
+  font-size: 16px !important;
+  transition: all 0.3s ease !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.search-input:focus {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+  outline: none !important;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Category filter enhancements */
+.category-filter {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  padding: 12px 20px !important;
+  border-radius: 12px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.category-filter:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+}
+
+.category-filter.active {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border-color: transparent !important;
+  color: white !important;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.05) 25%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    rgba(255, 255, 255, 0.05) 75%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 2s infinite !important;
+  border-radius: 8px !important;
+}
+
+/* Stats card enhancements */
+.stats-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  text-align: center !important;
+  transition: all 0.3s ease !important;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Modal enhancements */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.modal-content {
+  background: rgba(30, 41, 59, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .glass-card {
+    border-radius: 12px !important;
+    padding: 12px !important;
+  }
+  
+  .category-filter {
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+  }
+  
+  .search-input {
+    padding: 14px 18px !important;
+    font-size: 16px !important;
+  }
+  
+  .btn-gradient {
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .glass-card {
+    background: rgba(0, 0, 0, 0.9) !important;
+    border: 2px solid rgba(255, 255, 255, 0.5) !important;
+  }
+  
+  .category-filter {
+    background: rgba(0, 0, 0, 0.8) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .stunning-marker,
+  .category-filter,
+  .glass-card,
+  .btn-gradient {
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  .loading-skeleton {
+    animation: none !important;
+  }
+}
+
+/* Performance optimizations */
+.gpu-accelerated {
+  transform: translateZ(0) !important;
+  will-change: transform !important;
+}
+
+.smooth-scroll {
+  scroll-behavior: smooth !important;
+}
+
+/* Focus styles for accessibility */
+.category-filter:focus,
+.search-input:focus,
+.btn-gradient:focus {
+  outline: 2px solid rgba(16, 185, 129, 0.5) !important;
+  outline-offset: 2px !important;
+}
+
+/* Print styles */
+@media print {
+  .glass-card,
+  .category-filter,
+  .btn-gradient {
+    background: white !important;
+    color: black !important;
+    border: 1px solid black !important;
+  }
+}

@@ -1,0 +1,313 @@
+/* Yatra Design Tokens - Complete Backbone */
+
+/* ===== COLOR SYSTEM ===== */
+:root {
+  /* Brand Colors */
+  --yatra-brand-50: #f0fdf4;
+  --yatra-brand-100: #dcfce7;
+  --yatra-brand-200: #bbf7d0;
+  --yatra-brand-300: #86efac;
+  --yatra-brand-400: #4ade80;
+  --yatra-brand-500: #22c55e;
+  --yatra-brand-600: #16a34a;
+  --yatra-brand-700: #15803d;
+  --yatra-brand-800: #166534;
+  --yatra-brand-900: #14532d;
+
+  /* Primary (继承品牌色) */
+  --yatra-primary-50: var(--yatra-brand-50);
+  --yatra-primary-500: var(--yatra-brand-500);
+  --yatra-primary-600: var(--yatra-brand-600);
+  --yatra-primary-700: var(--yatra-brand-700);
+
+  /* Secondary */
+  --yatra-secondary-50: #fefce8;
+  --yatra-secondary-100: #fef9c3;
+  --yatra-secondary-200: #fef08a;
+  --yatra-secondary-300: #fde047;
+  --yatra-secondary-400: #facc15;
+  --yatra-secondary-500: #eab308;
+  --yatra-secondary-600: #ca8a04;
+  --yatra-secondary-700: #a16207;
+  --yatra-secondary-800: #854d0e;
+  --yatra-secondary-900: #713f12;
+
+  /* Accent */
+  --yatra-accent-50: #fef2f2;
+  --yatra-accent-100: #fee2e2;
+  --yatra-accent-200: #fecaca;
+  --yatra-accent-300: #fca5a5;
+  --yatra-accent-400: #f87171;
+  --yatra-accent-500: #ef4444;
+  --yatra-accent-600: #dc2626;
+  --yatra-accent-700: #b91c1c;
+  --yatra-accent-800: #991b1b;
+  --yatra-accent-900: #7f1d1d;
+
+  /* Neutral */
+  --yatra-neutral-50: #fafafa;
+  --yatra-neutral-100: #f5f5f5;
+  --yatra-neutral-200: #e5e5e5;
+  --yatra-neutral-300: #d4d4d4;
+  --yatra-neutral-400: #a3a3a3;
+  --yatra-neutral-500: #737373;
+  --yatra-neutral-600: #525252;
+  --yatra-neutral-700: #404040;
+  --yatra-neutral-800: #262626;
+  --yatra-neutral-900: #171717;
+
+  /* Semantic Colors */
+  --yatra-success: var(--yatra-primary-500);
+  --yatra-warning: var(--yatra-secondary-500);
+  --yatra-error: var(--yatra-accent-500);
+  --yatra-info: #3b82f6;
+
+  /* ===== SURFACE SYSTEM ===== */
+  /* Discovery Mode - Glass Morphism */
+  --yatra-glass-bg: rgba(255, 255, 255, 0.1);
+  --yatra-glass-border: rgba(255, 255, 255, 0.2);
+  --yatra-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --yatra-glass-blur: blur(20px);
+
+  /* Transaction Mode - Solid Surfaces */
+  --yatra-surface-primary: #ffffff;
+  --yatra-surface-secondary: #fafafa;
+  --yatra-surface-tertiary: #f5f5f5;
+  --yatra-surface-elevated: #ffffff;
+  --yatra-surface-overlay: rgba(255, 255, 255, 0.95);
+
+  /* Dark Mode Surfaces */
+  @media (prefers-color-scheme: dark) {
+    --yatra-surface-primary: #0f0f0f;
+    --yatra-surface-secondary: #1a1a1a;
+    --yatra-surface-tertiary: #262626;
+    --yatra-surface-elevated: #1a1a1a;
+    --yatra-surface-overlay: rgba(15, 15, 15, 0.95);
+    
+    --yatra-glass-bg: rgba(15, 15, 15, 0.4);
+    --yatra-glass-border: rgba(255, 255, 255, 0.1);
+    --yatra-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ===== TYPOGRAPHY ===== */
+  --yatra-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --yatra-font-display: 'Playfair Display', Georgia, serif;
+  --yatra-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+  /* Font Sizes */
+  --yatra-text-xs: 0.75rem;    /* 12px */
+  --yatra-text-sm: 0.875rem;   /* 14px */
+  --yatra-text-base: 1rem;     /* 16px */
+  --yatra-text-lg: 1.125rem;   /* 18px */
+  --yatra-text-xl: 1.25rem;    /* 20px */
+  --yatra-text-2xl: 1.5rem;    /* 24px */
+  --yatra-text-3xl: 1.875rem;  /* 30px */
+  --yatra-text-4xl: 2.25rem;   /* 36px */
+  --yatra-text-5xl: 3rem;      /* 48px */
+
+  /* Font Weights */
+  --yatra-font-light: 300;
+  --yatra-font-normal: 400;
+  --yatra-font-medium: 500;
+  --yatra-font-semibold: 600;
+  --yatra-font-bold: 700;
+  --yatra-font-extrabold: 800;
+
+  /* Line Heights */
+  --yatra-leading-tight: 1.25;
+  --yatra-leading-normal: 1.5;
+  --yatra-leading-relaxed: 1.75;
+
+  /* ===== SPACING SYSTEM ===== */
+  --yatra-space-0: 0;
+  --yatra-space-1: 0.25rem;   /* 4px */
+  --yatra-space-2: 0.5rem;    /* 8px */
+  --yatra-space-3: 0.75rem;   /* 12px */
+  --yatra-space-4: 1rem;      /* 16px */
+  --yatra-space-5: 1.25rem;   /* 20px */
+  --yatra-space-6: 1.5rem;    /* 24px */
+  --yatra-space-8: 2rem;      /* 32px */
+  --yatra-space-10: 2.5rem;   /* 40px */
+  --yatra-space-12: 3rem;     /* 48px */
+  --yatra-space-16: 4rem;     /* 64px */
+  --yatra-space-20: 5rem;     /* 80px */
+  --yatra-space-24: 6rem;     /* 96px */
+  --yatra-space-32: 8rem;     /* 128px */
+
+  /* ===== BORDER RADIUS ===== */
+  --yatra-radius-none: 0;
+  --yatra-radius-sm: 0.25rem;   /* 4px */
+  --yatra-radius-base: 0.375rem; /* 6px */
+  --yatra-radius-md: 0.5rem;     /* 8px */
+  --yatra-radius-lg: 0.75rem;    /* 12px */
+  --yatra-radius-xl: 1rem;       /* 16px */
+  --yatra-radius-2xl: 1.5rem;    /* 24px */
+  --yatra-radius-3xl: 2rem;      /* 32px */
+  --yatra-radius-full: 9999px;
+
+  /* ===== SHADOWS ===== */
+  --yatra-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --yatra-shadow-base: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --yatra-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --yatra-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --yatra-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+  --yatra-shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+  --yatra-shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+  /* ===== ANIMATIONS ===== */
+  --yatra-duration-fast: 150ms;
+  --yatra-duration-normal: 250ms;
+  --yatra-duration-slow: 350ms;
+  --yatra-duration-slower: 500ms;
+
+  --yatra-ease-linear: linear;
+  --yatra-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --yatra-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --yatra-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== Z-INDEX ===== */
+  --yatra-z-dropdown: 1000;
+  --yatra-z-sticky: 1020;
+  --yatra-z-fixed: 1030;
+  --yatra-z-modal-backdrop: 1040;
+  --yatra-z-modal: 1050;
+  --yatra-z-popover: 1060;
+  --yatra-z-tooltip: 1070;
+  --yatra-z-toast: 1080;
+  --yatra-z-maximum: 9999;
+
+  /* ===== BREAKPOINTS ===== */
+  --yatra-breakpoint-sm: 640px;
+  --yatra-breakpoint-md: 768px;
+  --yatra-breakpoint-lg: 1024px;
+  --yatra-breakpoint-xl: 1280px;
+  --yatra-breakpoint-2xl: 1536px;
+
+  /* ===== CONTAINER WIDTHS ===== */
+  --yatra-container-sm: 640px;
+  --yatra-container-md: 768px;
+  --yatra-container-lg: 1024px;
+  --yatra-container-xl: 1280px;
+  --yatra-container-2xl: 1536px;
+}
+
+/* ===== UTILITY CLASSES ===== */
+.yatra-container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--yatra-space-4);
+  padding-right: var(--yatra-space-4);
+}
+
+@media (min-width: 640px) {
+  .yatra-container { max-width: var(--yatra-container-sm); }
+}
+@media (min-width: 768px) {
+  .yatra-container { max-width: var(--yatra-container-md); }
+}
+@media (min-width: 1024px) {
+  .yatra-container { max-width: var(--yatra-container-lg); }
+}
+@media (min-width: 1280px) {
+  .yatra-container { max-width: var(--yatra-container-xl); }
+}
+@media (min-width: 1536px) {
+  .yatra-container { max-width: var(--yatra-container-2xl); }
+}
+
+/* ===== COMPONENT BASES ===== */
+.yatra-glass {
+  background: var(--yatra-glass-bg);
+  backdrop-filter: var(--yatra-glass-blur);
+  -webkit-backdrop-filter: var(--yatra-glass-blur);
+  border: 1px solid var(--yatra-glass-border);
+  box-shadow: var(--yatra-glass-shadow);
+}
+
+.yatra-surface {
+  background: var(--yatra-surface-primary);
+  border: 1px solid var(--yatra-neutral-200);
+  box-shadow: var(--yatra-shadow-sm);
+}
+
+.yatra-surface-elevated {
+  background: var(--yatra-surface-elevated);
+  border: 1px solid var(--yatra-neutral-200);
+  box-shadow: var(--yatra-shadow-md);
+}
+
+.yatra-transaction-mode .yatra-glass {
+  background: var(--yatra-surface-primary);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--yatra-neutral-200);
+  box-shadow: var(--yatra-shadow-sm);
+}
+
+/* ===== RESPONSIVE HELPERS ===== */
+.yatra-mobile-only {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .yatra-mobile-only {
+    display: none;
+  }
+}
+
+.yatra-desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .yatra-desktop-only {
+    display: block;
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.yatra-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== FOCUS STYLES ===== */
+.yatra-focus-ring:focus-visible {
+  outline: 2px solid var(--yatra-primary-500);
+  outline-offset: 2px;
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .yatra-no-print {
+    display: none !important;
+  }
+  
+  .yatra-print-only {
+    display: block !important;
+  }
+  
+  * {
+    color: black !important;
+    background: white !important;
+  }
+}

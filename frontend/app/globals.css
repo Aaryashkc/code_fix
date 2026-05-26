@@ -1,0 +1,420 @@
+@import "../styles/design-tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────── */
+/*  SINGLE BASE LAYER — definitive colour tokens              */
+/* ─────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* ── Light theme — cool off-white canvas ── */
+    --background: 226 32% 97%;
+    --foreground: 228 35% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 228 35% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 35% 12%;
+
+    /* ── Midnight navy primary ── */
+    --primary: 228 62% 25%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 226 22% 92%;
+    --secondary-foreground: 228 35% 14%;
+    --muted: 226 16% 94%;
+    --muted-foreground: 228 10% 44%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 228 35% 12%;
+
+    --destructive: 356 68% 49%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 226 18% 88%;
+    --input: 226 18% 85%;
+    --ring: 228 62% 25%;
+    --radius: 0.625rem;
+
+    /* ── Charts — navy palette ── */
+    --chart-1: 228 62% 25%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 207 60% 40%;
+    --chart-4: 356 68% 49%;
+    --chart-5: 228 45% 48%;
+
+    /* ── Sidebar — always dark midnight navy in light mode ── */
+    --sidebar-background: 228 72% 9%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 228 72% 9%;
+    --sidebar-primary-foreground: 0 0% 96%;
+    --sidebar-border: 228 55% 15%;
+    --sidebar-accent: 228 55% 16%;
+    --sidebar-accent-foreground: 0 0% 96%;
+
+    /* ── Semantic ── */
+    --success: 143 60% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 95% 52%;
+    --warning-foreground: 40 100% 10%;
+    --info: 207 89% 54%;
+    --info-foreground: 0 0% 100%;
+
+    /* ── Shadows / glows ── */
+    --soft-shadow: 0 8px 28px rgba(10, 18, 60, 0.10);
+    --card-shadow: 0 1px 3px rgba(10, 18, 60, 0.07), 0 1px 2px rgba(10, 18, 60, 0.05);
+    --card-shadow-hover: 0 8px 24px rgba(10, 18, 60, 0.12), 0 2px 6px rgba(10, 18, 60, 0.07);
+    --glow-primary: 0 0 32px hsl(228 62% 25% / 0.30);
+    --glow-secondary: 0 0 32px hsl(38 92% 50% / 0.24);
+  }
+
+  .dark {
+    --background: 228 20% 8%;
+    --foreground: 226 28% 93%;
+    --card: 228 18% 11%;
+    --card-foreground: 226 28% 93%;
+    --popover: 228 18% 11%;
+    --popover-foreground: 226 28% 93%;
+    --primary: 228 72% 60%;
+    --primary-foreground: 228 20% 8%;
+    --secondary: 228 18% 17%;
+    --secondary-foreground: 226 28% 93%;
+    --muted: 228 16% 15%;
+    --muted-foreground: 228 10% 60%;
+    --accent: 38 88% 55%;
+    --accent-foreground: 228 20% 8%;
+    --destructive: 356 68% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 228 16% 20%;
+    --input: 228 16% 22%;
+    --ring: 228 72% 60%;
+
+    /* ── Sidebar — deeper midnight navy in dark mode ── */
+    --sidebar-background: 228 72% 6%;
+    --sidebar-foreground: 0 0% 94%;
+    --sidebar-primary: 228 72% 6%;
+    --sidebar-primary-foreground: 0 0% 94%;
+    --sidebar-border: 228 55% 12%;
+    --sidebar-accent: 228 55% 13%;
+    --sidebar-accent-foreground: 0 0% 94%;
+
+    --success: 142 62% 42%;
+    --success-foreground: 144 80% 10%;
+    --warning: 48 96% 53%;
+    --warning-foreground: 60 100% 10%;
+    --info: 217 91% 60%;
+    --info-foreground: 222 47% 11%;
+    --soft-shadow: 0 4px 20px rgba(0, 0, 0, 0.40);
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.22);
+    --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --glow-primary: 0 0 30px hsl(228 72% 60% / 0.45);
+    --glow-secondary: 0 0 30px hsl(38 88% 55% / 0.40);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    min-height: 100vh;
+    background:
+      linear-gradient(160deg, hsl(226 32% 97%) 0%, hsl(228 22% 96%) 50%, hsl(226 28% 97%) 100%);
+  }
+
+  .dark body {
+    background:
+      linear-gradient(160deg, hsl(228 20% 8%) 0%, hsl(228 18% 9%) 50%, hsl(228 20% 8%) 100%);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: hsl(var(--muted)); }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--primary) / 0.4); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.65); }
+
+  /* Text selection */
+  ::selection { background: hsl(var(--primary) / 0.2); color: hsl(var(--foreground)); }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: calc(var(--radius) - 2px);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/*  COMPONENTS                                                 */
+/* ─────────────────────────────────────────────────────────── */
+@layer components {
+  /* App background grid */
+  .yatra-app-frame {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.28) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.2) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  /* ── Solid surface cards ── */
+  .premium-surface {
+    @apply rounded-xl border border-border/70 bg-card;
+    box-shadow: var(--card-shadow);
+  }
+
+  .premium-panel {
+    @apply rounded-xl border border-border/70 bg-card;
+    box-shadow: var(--card-shadow);
+  }
+
+  .premium-stat-card {
+    @apply rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 hover:-translate-y-0.5;
+    box-shadow: var(--card-shadow);
+  }
+  .premium-stat-card:hover {
+    box-shadow: var(--card-shadow-hover);
+  }
+
+  /* ── Hero banner — deep midnight navy gradient ── */
+  .premium-hero {
+    @apply relative overflow-hidden rounded-xl border border-transparent text-white;
+    background: linear-gradient(135deg, hsl(228 72% 10%) 0%, hsl(228 65% 16%) 60%, hsl(228 58% 22%) 100%);
+    box-shadow: 0 8px 32px rgba(10, 18, 60, 0.22);
+  }
+
+  .premium-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at top right, rgba(255,255,255,0.08) 0%, transparent 60%),
+      linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.12) 100%);
+    pointer-events: none;
+  }
+
+  /* Typography */
+  .premium-heading {
+    font-family: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+    @apply tracking-tight;
+  }
+
+  .premium-empty {
+    @apply rounded-lg border border-dashed border-border/80 bg-card p-8 text-center text-sm text-muted-foreground;
+  }
+
+  .role-kicker {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold tracking-tight text-foreground;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/*  UTILITIES                                                  */
+/* ─────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(228 72% 55%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-text-emerald {
+    background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-text-sunset {
+    background: linear-gradient(135deg, #F59E0B 0%, #DC143C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Card interactions */
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--soft-shadow);
+  }
+
+  /* Soft press */
+  .soft-press { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  .soft-press:active { transform: scale(0.98); box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
+
+  /* Glow */
+  .glow-primary { box-shadow: var(--glow-primary); }
+  .glow-secondary { box-shadow: var(--glow-secondary); }
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/*  KEYFRAMES & ANIMATIONS                                     */
+/* ─────────────────────────────────────────────────────────── */
+
+/* Payment success */
+@keyframes confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg) scale(0); opacity: 0; }
+}
+@keyframes scale-in {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes draw-check { to { stroke-dashoffset: 0; } }
+@keyframes progress-bar {
+  0%   { width: 0%; }
+  50%  { width: 70%; }
+  100% { width: 95%; }
+}
+
+/* Utility animations */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px hsl(var(--primary) / 0.3); }
+  50%       { box-shadow: 0 0 24px hsl(var(--primary) / 0.55), 0 0 48px hsl(var(--primary) / 0.2); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Animation classes */
+.animate-confetti       { animation: confetti-fall linear forwards; }
+.animate-scale-in       { animation: scale-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+.animate-draw-check     { animation: draw-check 0.6s ease-out 0.4s forwards; }
+.animate-progress-bar   { animation: progress-bar 3s ease-in-out infinite; }
+.animate-float          { animation: float 3s ease-in-out infinite; }
+.animate-float-subtle   { animation: float-subtle 4s ease-in-out infinite; }
+.animate-fade-up        { animation: fade-up 0.5s ease-out forwards; }
+.animate-glow-pulse     { animation: glow-pulse 2.5s ease-in-out infinite; }
+.animate-slide-in-right { animation: slide-in-right 0.4s ease-out forwards; }
+
+/* Shimmer skeleton */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--background)) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/*  USER LOCATION MARKER                                       */
+/* ─────────────────────────────────────────────────────────── */
+.user-location-marker { position: relative; width: 20px; height: 20px; }
+.user-dot {
+  position: absolute;
+  width: 16px; height: 16px;
+  background: #3b82f6;
+  border: 3px solid white;
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  z-index: 2;
+}
+.pulse-ring {
+  position: absolute;
+  width: 40px; height: 40px;
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) translateZ(0);
+  will-change: transform, opacity;
+  animation: user-location-pulse 2s ease-out infinite;
+  z-index: 1;
+}
+@keyframes user-location-pulse {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+.animate-pulse-ring {
+  will-change: transform, opacity;
+  animation: user-location-pulse 2s ease-out infinite;
+  transform: translateZ(0);
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/*  MAP MARKER ANIMATIONS                                      */
+/* ─────────────────────────────────────────────────────────── */
+@keyframes markerDrop {
+  0%   { opacity: 0; transform: translateY(-30px) scale(0.8) rotate(-10deg); }
+  50%  { opacity: 0.8; transform: translateY(5px) scale(1.1) rotate(5deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+}
+.stunning-marker {
+  animation: markerDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.stunning-marker:hover {
+  transform: scale(1.15) translateY(-5px);
+  filter: brightness(1.2) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
+}
+
+/* Leaflet popup overrides */
+.stunning-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 20px !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+.stunning-popup .leaflet-popup-content  { margin: 0 !important; font-family: system-ui !important; }
+.stunning-popup .leaflet-popup-tip      { display: none !important; }
+.stunning-popup .leaflet-popup-close-button { display: none !important; }
+
+/* Loading skeleton */
+.loading-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/*  PWA SAFE AREA                                              */
+/* ─────────────────────────────────────────────────────────── */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.px-safe { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+
+/* ─────────────────────────────────────────────────────────── */
+/*  RESPONSIVE & ACCESSIBILITY                                 */
+/* ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .stunning-marker { transform: scale(0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stunning-marker, .loading-skeleton {
+    transition: none;
+    animation: none;
+  }
+}
