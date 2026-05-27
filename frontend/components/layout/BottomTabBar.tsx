@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
   Calendar,
   LocateFixed,
   User,
   MapPin,
   Compass,
+  LayoutDashboard,
+  Users,
 } from 'lucide-react';
 
 interface BottomTabBarProps {
@@ -17,15 +18,15 @@ interface BottomTabBarProps {
 }
 
 const touristTabs = [
-  { href: '/user/dashboard', label: 'Home', icon: LayoutDashboard },
+  { href: '/user/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/user/explore', label: 'Explore', icon: Compass },
-  { href: '/user/trips', label: 'Trips', icon: MapPin },
-  { href: '/user/active-trip', label: 'Active', icon: LocateFixed },
+  { href: '/user/guides', label: 'Guides', icon: Users },
   { href: '/user/bookings', label: 'Bookings', icon: Calendar },
+  { href: '/user/active-trip', label: 'Active', icon: LocateFixed },
 ];
 
 const guideTabs = [
-  { href: '/guide/dashboard', label: 'Home', icon: LayoutDashboard },
+  { href: '/guide/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/guide/places', label: 'Places', icon: MapPin },
   { href: '/guide/live', label: 'Live', icon: LocateFixed },
   { href: '/guide/bookings', label: 'Bookings', icon: Calendar },

@@ -142,7 +142,42 @@ describe('Authentication Security Tests', () => {
         .expect(200);
 
       expect(response.headers['set-cookie'][0]).toContain('token=');
+      expect(response.headers['set-cookie'][0]).not.toContain('Max-Age=');
       expect(response.body.token).toBeUndefined();
+    });
+
+    it('should persist the cookie session when remember me is selected', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'test@example.com',
+          password: 'Password123',
+          rememberMe: true
+        })
+        .expect(200);
+
+      expect(response.headers['set-cookie'][0]).toContain('Max-Age=604800');
+    });
+
+    it('should allow the production session cookie on cross-site API requests', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      try {
+        const response = await request(app)
+          .post('/api/auth/login')
+          .send({
+            email: 'test@example.com',
+            password: 'Password123',
+            rememberMe: true
+          })
+          .expect(200);
+
+        expect(response.headers['set-cookie'][0]).toContain('Secure');
+        expect(response.headers['set-cookie'][0]).toContain('SameSite=None');
+      } finally {
+        process.env.NODE_ENV = originalNodeEnv;
+      }
     });
 
     it('should reject an already issued session after suspension', async () => {

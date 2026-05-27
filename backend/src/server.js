@@ -16,7 +16,7 @@ const { createAndEmit } = require('./utils/notificationService');
 // Validate environment variables before starting
 validateEnv();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Connect to database
 

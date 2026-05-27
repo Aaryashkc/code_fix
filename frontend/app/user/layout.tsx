@@ -10,11 +10,13 @@ import { AppContent } from '@/components/layout/AppContent';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { UserPortalSkeleton } from '@/components/ui/skeleton-cards';
-import { Calendar, Heart, LayoutDashboard, LocateFixed, MapPin, Route, User } from 'lucide-react';
+import { Calendar, Compass, Heart, LayoutDashboard, LocateFixed, Route, User, Users } from 'lucide-react';
 
 const userNavItems = [
   { href: '/user/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/user/explore', label: 'Explore', icon: MapPin },
+  { href: '/user/explore', label: 'Explore', icon: Compass },
+  { href: '/destinations', label: 'Browse Catalog', icon: LocateFixed },
+  { href: '/user/guides', label: 'Find Guides', icon: Users },
   { href: '/user/trips', label: 'Trips', icon: Route },
   { href: '/user/active-trip', label: 'Active Trip', icon: LocateFixed },
   { href: '/user/bookings', label: 'Bookings', icon: Calendar },
@@ -59,7 +61,9 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       case '/user/dashboard':
         return 'Your trip status and next actions';
       case '/user/explore':
-        return 'Discover places across Nepal';
+        return 'Search places and plan on the map';
+      case '/user/guides':
+        return 'Find local experts for your trip';
       case '/user/trips':
         return 'Build and organize your plans';
       case '/user/bookings':

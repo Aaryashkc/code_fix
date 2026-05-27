@@ -45,8 +45,8 @@ export const authUtils = {
   },
 
   // Login with credentials (server sets httpOnly cookie — no localStorage)
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', { email, password });
+  async login(email: string, password: string, rememberMe: boolean): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/auth/login', { email, password, rememberMe });
     // Token is delivered via httpOnly cookie by the server — do NOT store in localStorage
     // as that would expose it to XSS. The cookie is sent automatically by the browser.
     return response.data;

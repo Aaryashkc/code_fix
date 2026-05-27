@@ -68,6 +68,8 @@ interface MapProps {
   snackFinderEnabled?: boolean;
   snackFinderAutoSearch?: boolean;
   snackSearchRadius?: number;
+  autoLocate?: boolean;
+  showUserLocationTools?: boolean;
 }
 
 interface NearbyRecommendation {
@@ -247,6 +249,8 @@ function MapInner({
   snackFinderEnabled = false,
   snackFinderAutoSearch = false,
   snackSearchRadius = 3000,
+  autoLocate = true,
+  showUserLocationTools = true,
 }: MapProps) {
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -271,6 +275,7 @@ function MapInner({
 
   const [nearbyRecommendation, setNearbyRecommendation] = useState<NearbyRecommendation | null>(null);
   const [showRecommendationCard, setShowRecommendationCard] = useState(false);
+  const [centerLatitude, centerLongitude] = center;
 
   // Debounce markers to prevent excessive re-renders
   const debouncedMarkers = useDebounce(markers, 300);
@@ -308,7 +313,7 @@ function MapInner({
 
       mapRef.current = L.map(mapContainerRef.current!, {
         center: initialCenter,
-        zoom: 14,
+        zoom,
         zoomControl: true,
         scrollWheelZoom: false, // Disable scroll zoom to prevent wild zooming
         preferCanvas: true,
@@ -338,29 +343,8 @@ function MapInner({
       setTimeout(() => mapRef.current?.invalidateSize(), 100);
     };
 
-    // Try to get user location immediately, fall back to default if not available
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          const userCenter: [number, number] = [latitude, longitude];
-          setUserLocation(userCenter);
-          initMap(userCenter);
-          // Update marker after map is ready
-          setTimeout(() => {
-            if (leafletRef.current) {
-              updateUserLocationMarker(latitude, longitude);
-            }
-          }, 100);
-        },
-        () => {
-          initMap(center);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      initMap(center);
-    }
+    // Display the basemap immediately; location permission should never gate rendering.
+    void initMap(center);
 
     return () => {
       isMounted = false;
@@ -591,6 +575,34 @@ function MapInner({
     setRouteSnacks([]);
   }, []);
 
+  const updateUserLocationMarker = useCallback((lat: number, lng: number) => {
+    if (!userLocationLayerRef.current || !leafletRef.current) return;
+
+    const L = leafletRef.current;
+    userLocationLayerRef.current.clearLayers();
+
+    const userIcon = L.divIcon({
+      html: createUserMarkerHtml(),
+      className: '',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+    });
+
+    L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 })
+      .bindPopup('<strong>You are here</strong>')
+      .addTo(userLocationLayerRef.current);
+
+    if (mapRef.current) {
+      mapRef.current.setView([lat, lng], 16); // Zoom in closer when location found
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    mapRef.current.setView([centerLatitude, centerLongitude], mapRef.current.getZoom());
+  }, [centerLatitude, centerLongitude]);
+
   const getUserLocation = useCallback(() => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
@@ -622,29 +634,7 @@ function MapInner({
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, []);
-
-  const updateUserLocationMarker = useCallback((lat: number, lng: number) => {
-    if (!isReady || !userLocationLayerRef.current || !leafletRef.current) return;
-
-    const L = leafletRef.current;
-    userLocationLayerRef.current.clearLayers();
-
-    const userIcon = L.divIcon({
-      html: createUserMarkerHtml(),
-      className: '',
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
-    });
-
-    L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 })
-      .bindPopup('<strong>You are here</strong>')
-      .addTo(userLocationLayerRef.current);
-
-    if (mapRef.current) {
-      mapRef.current.setView([lat, lng], 16); // Zoom in closer when location found
-    }
-  }, [isReady]);
+  }, [updateUserLocationMarker]);
 
   const handleFindSnacks = useCallback(async () => {
     if (!snackFinderEnabled) return;
@@ -784,14 +774,14 @@ function MapInner({
 
   // Auto-request location on mount for better UX
   useEffect(() => {
-    if (isReady && !userLocation) {
+    if (autoLocate && isReady && !userLocation) {
       // Small delay to let map render first
       const timer = setTimeout(() => {
         getUserLocation();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isReady, getUserLocation, userLocation]);
+  }, [autoLocate, isReady, getUserLocation, userLocation]);
 
   // Update markers with RAF for smooth performance
   useEffect(() => {
@@ -870,19 +860,21 @@ function MapInner({
           </Button>
         ) : null}
 
-        <Button
-          onClick={getUserLocation}
-          variant="outline"
-          className="border-border bg-card/95 text-foreground shadow-sm backdrop-blur hover:bg-muted"
-          size="sm"
-          disabled={isTracking}
-        >
-          {isTracking ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <MapPin className="h-4 w-4" />
-          )}
-        </Button>
+        {showUserLocationTools && (
+          <Button
+            onClick={getUserLocation}
+            variant="outline"
+            className="border-border bg-card/95 text-foreground shadow-sm backdrop-blur hover:bg-muted"
+            size="sm"
+            disabled={isTracking}
+          >
+            {isTracking ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <MapPin className="h-4 w-4" />
+            )}
+          </Button>
+        )}
 
         {activeRoute && (
           <Button
@@ -960,23 +952,25 @@ function MapInner({
         </div>
       )}
       {/* Location Status */}
-      <div className="absolute bottom-4 left-4 z-[400]">
-        <GlassCard className="p-2">
-          <div className="flex items-center gap-2 text-sm text-slate-300">
-            {userLocation ? (
-              <>
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span>Location found</span>
-              </>
-            ) : (
-              <>
-                <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                <span>Use location button</span>
-              </>
-            )}
-          </div>
-        </GlassCard>
-      </div>
+      {showUserLocationTools && (
+        <div className="absolute bottom-4 left-4 z-[400]">
+          <GlassCard className="p-2">
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              {userLocation ? (
+                <>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  <span>Location found</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                  <span>Use location button</span>
+                </>
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
       {showRecommendationCard && nearbyRecommendation && (
         <div className="absolute top-4 left-4 z-[400] max-w-sm">

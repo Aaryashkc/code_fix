@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Area, AreaChart, Bar, BarChart,
+  Area, AreaChart,
   CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import {
@@ -82,7 +82,11 @@ export default function AdminDashboard() {
   const [lastRefresh,    setLastRefresh]     = useState<Date | null>(null);
 
   const fetchAll = useCallback(async (showRefreshing = false) => {
-    showRefreshing ? setRefreshing(true) : setLoading(true);
+    if (showRefreshing) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setErrorMessage('');
     try {
       const [userRes, destRes, bkRes, booksRes, guidesRes, analyticsRes] =
@@ -95,8 +99,9 @@ export default function AdminDashboard() {
           api.get<AnalyticsApi>('/analytics'),
         ]);
 
-      const failedCount = [userRes, destRes, bkRes, booksRes, guidesRes].filter(r => r.status === 'rejected').length;
-      if (failedCount === 5) setErrorMessage('Unable to load dashboard data. Please try again.');
+      const dashboardResponses = [userRes, destRes, bkRes, booksRes, guidesRes, analyticsRes];
+      const failedCount = dashboardResponses.filter(r => r.status === 'rejected').length;
+      if (failedCount === dashboardResponses.length) setErrorMessage('Unable to load dashboard data. Please try again.');
       else if (failedCount > 0) setErrorMessage('Some sections could not be loaded.');
 
       const u  = userRes.status  === 'fulfilled' ? userRes.value.data.data  || {} : {};
@@ -243,17 +248,13 @@ export default function AdminDashboard() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              /* Placeholder bars when no analytics data */
-              <div className="flex items-end gap-2 h-[220px] px-2">
-                {['Jan','Feb','Mar','Apr','May','Jun','Jul'].map((m, i) => (
-                  <div key={m} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full rounded-t-md bg-primary/15"
-                      style={{ height: `${[40,60,35,80,55,75,45][i]}%` }}
-                    />
-                    <span className="text-[10px] text-muted-foreground">{m}</span>
-                  </div>
-                ))}
+              <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/10 px-6 text-center">
+                <div>
+                  <p className="text-sm font-medium">No booking activity yet</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Booking trends will appear when bookings are recorded.
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>

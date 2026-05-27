@@ -182,7 +182,7 @@ export function AppSidebar({
       {/* ── Brand header ── */}
       <div className="px-5 py-5">
         <Link
-          href={user ? (profileHrefs[user.role] ?? '/') : '/'}
+          href="/"
           className="flex items-center gap-3 group"
         >
           {/* Logo mark */}

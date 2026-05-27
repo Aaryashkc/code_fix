@@ -94,7 +94,15 @@ if (!isDev && process.env.NODE_ENV !== 'test') {
 // Rate limiting — global
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: Number(process.env.RATE_LIMIT_MAX) || 100
+  max: Number(process.env.RATE_LIMIT_MAX) || 100,
+  // Local navigation and hot reloads can easily exhaust this quota while developing.
+  skip: (req) => isLocalDevRequest(req),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.'
+  }
 });
 app.use('/api/', limiter);
 

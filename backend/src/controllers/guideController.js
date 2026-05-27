@@ -1,6 +1,10 @@
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // @desc    Get all guides
 // @route   GET /api/guides
 // @access  Public
@@ -27,8 +31,12 @@ exports.getGuides = async (req, res) => {
       suspended: false
     };
 
-    if (specialization) query.specializations = { $in: [specialization] };
-    if (language) query['languages.code'] = language;
+    if (specialization) {
+      query.specializations = new RegExp(`^${escapeRegex(specialization)}$`, 'i');
+    }
+    if (language) {
+      query['languages.name'] = new RegExp(`^${escapeRegex(language)}$`, 'i');
+    }
     if (minPrice || maxPrice) {
       query.pricePerDay = {};
       if (minPrice) query.pricePerDay.$gte = Number(minPrice);
@@ -37,9 +45,12 @@ exports.getGuides = async (req, res) => {
     if (available !== undefined) query.available = available === 'true';
     if (minRating) query.rating = { $gte: Number(minRating) };
     if (search) {
+      const searchExpression = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { bio: { $regex: search, $options: 'i' } }
+        { name: searchExpression },
+        { bio: searchExpression },
+        { location: searchExpression },
+        { specializations: searchExpression }
       ];
     }
 

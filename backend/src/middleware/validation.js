@@ -102,7 +102,13 @@ exports.validateLogin = [
   
   body('password')
     .notEmpty()
-    .withMessage('Password is required')
+    .withMessage('Password is required'),
+
+  body('rememberMe')
+    .optional()
+    .isBoolean()
+    .withMessage('Remember me must be true or false')
+    .toBoolean()
 ];
 
 exports.validateBooking = [

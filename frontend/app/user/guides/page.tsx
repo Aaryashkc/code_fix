@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Search, Star, MapPin, Filter, X, Banknote, Languages,
-  CheckCircle, Wifi, Sparkles, SlidersHorizontal, Clock, Users,
+  CheckCircle, SlidersHorizontal, Clock, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { GuideListSkeleton } from '@/components/ui/skeleton-cards';
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious,
+} from '@/components/ui/pagination';
 
 interface Guide {
   _id: string; name: string; avatar?: string; bio?: string;
@@ -177,7 +180,9 @@ function GuideCard({ guide, isOnline }: { guide: Guide; isOnline: boolean }) {
 export default function GuidesPage() {
   const searchParams = useSearchParams();
   const [guides,          setGuides]          = useState<Guide[]>([]);
-  const [filteredGuides,  setFilteredGuides]  = useState<Guide[]>([]);
+  const [totalGuides,     setTotalGuides]     = useState(0);
+  const [page,            setPage]            = useState(1);
+  const [pages,           setPages]           = useState(1);
   const [loading,         setLoading]         = useState(true);
   const [searchTerm,      setSearchTerm]      = useState('');
   const [languageFilter,  setLanguageFilter]  = useState('all');
@@ -189,9 +194,33 @@ export default function GuidesPage() {
   const [showFilters,     setShowFilters]     = useState(false);
 
   const fetchGuides = useCallback(async () => {
-    try { const r = await api.get('/guides'); setGuides(r.data.data || []); }
+    const sort: Record<string, string> = {
+      rating: '-rating',
+      popular: '-reviewCount',
+      'price-low': 'pricePerDay',
+      'price-high': '-pricePerDay',
+      name: 'name',
+    };
+
+    try {
+      const r = await api.get('/guides', {
+        params: {
+          page,
+          limit: 9,
+          search: searchTerm.trim() || undefined,
+          language: languageFilter !== 'all' ? languageFilter : undefined,
+          specialization: specFilter !== 'all' ? specFilter : undefined,
+          available: availFilter === 'all' ? undefined : availFilter === 'available',
+          maxPrice: priceRange[0] < PRICE_MAX ? priceRange[0] : undefined,
+          sort: sort[sortBy],
+        },
+      });
+      setGuides(r.data.data || []);
+      setTotalGuides(r.data.total ?? 0);
+      setPages(Math.max(1, r.data.pages ?? 1));
+    }
     catch { /* silent */ } finally { setLoading(false); }
-  }, []);
+  }, [availFilter, languageFilter, page, priceRange, searchTerm, sortBy, specFilter]);
 
   const fetchOnline = useCallback(async () => {
     try { const r = await api.get('/guides/online'); setOnlineIds(r.data.data || []); }
@@ -199,10 +228,15 @@ export default function GuidesPage() {
   }, []);
 
   useEffect(() => {
-    fetchGuides(); fetchOnline();
+    const timer = setTimeout(fetchGuides, 250);
+    return () => clearTimeout(timer);
+  }, [fetchGuides]);
+
+  useEffect(() => {
+    fetchOnline();
     const t = setInterval(fetchOnline, 15000);
     return () => clearInterval(t);
-  }, [fetchGuides, fetchOnline]);
+  }, [fetchOnline]);
 
   useEffect(() => {
     const q = searchParams.toString();
@@ -218,29 +252,9 @@ export default function GuidesPage() {
     setAvailFilter(av === 'available' || av === 'unavailable' ? av : 'all');
   }, [searchParams]);
 
-  const filterAndSort = useCallback(() => {
-    let f = [...guides];
-    const s = searchTerm.trim().toLowerCase();
-    if (s) f = f.filter(g => [g.name, g.bio, g.location, ...(g.specializations||[])].filter(Boolean).join(' ').toLowerCase().includes(s));
-    if (languageFilter !== 'all') f = f.filter(g => (g.languages||[]).some(l => l.name.toLowerCase() === languageFilter));
-    if (specFilter !== 'all')     f = f.filter(g => (g.specializations||[]).some(sp => sp.toLowerCase() === specFilter));
-    if (availFilter === 'available')   f = f.filter(g => g.available);
-    if (availFilter === 'unavailable') f = f.filter(g => !g.available);
-    f = f.filter(g => (g.pricePerDay||0) <= priceRange[0]);
-    f.sort((a, b) => {
-      switch (sortBy) {
-        case 'rating':     return b.rating - a.rating;
-        case 'price-low':  return a.pricePerDay - b.pricePerDay;
-        case 'price-high': return b.pricePerDay - a.pricePerDay;
-        case 'popular':    return b.reviewCount - a.reviewCount;
-        case 'name':       return a.name.localeCompare(b.name);
-        default:           return 0;
-      }
-    });
-    setFilteredGuides(f);
-  }, [guides, searchTerm, languageFilter, specFilter, availFilter, priceRange, sortBy]);
-
-  useEffect(() => { filterAndSort(); }, [filterAndSort]);
+  useEffect(() => {
+    setPage(1);
+  }, [availFilter, languageFilter, priceRange, searchTerm, sortBy, specFilter]);
 
   const clearFilters = () => { setSearchTerm(''); setLanguageFilter('all'); setSpecFilter('all'); setAvailFilter('all'); setPriceRange([PRICE_MAX]); setSortBy('rating'); };
   const hasActiveFilters = searchTerm || languageFilter !== 'all' || specFilter !== 'all' || availFilter !== 'all' || priceRange[0] < PRICE_MAX;
@@ -263,9 +277,9 @@ export default function GuidesPage() {
           {/* Quick stats */}
           <div className="flex gap-3">
             {[
-              { val: guides.length,         label: 'Total Guides' },
+              { val: totalGuides,           label: hasActiveFilters ? 'Matches' : 'Total Guides' },
               { val: onlineIds.length,      label: 'Online Now' },
-              { val: filteredGuides.length, label: 'Showing' },
+              { val: guides.length,         label: 'Showing' },
             ].map(s => (
               <div key={s.label} className="flex flex-col items-center rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-center min-w-[80px]">
                 <p className="text-xl font-bold text-foreground">{s.val}</p>
@@ -359,7 +373,7 @@ export default function GuidesPage() {
             {/* Active filter chips */}
             {hasActiveFilters && (
               <div className="flex flex-wrap gap-2">
-                {searchTerm && <Badge variant="secondary" className="gap-1">"{searchTerm}" <button onClick={() => setSearchTerm('')}><X className="h-3 w-3" /></button></Badge>}
+                {searchTerm && <Badge variant="secondary" className="gap-1">&quot;{searchTerm}&quot; <button onClick={() => setSearchTerm('')}><X className="h-3 w-3" /></button></Badge>}
                 {languageFilter !== 'all' && <Badge variant="secondary" className="gap-1 capitalize">{languageFilter} <button onClick={() => setLanguageFilter('all')}><X className="h-3 w-3" /></button></Badge>}
                 {specFilter !== 'all' && <Badge variant="secondary" className="gap-1 capitalize">{specFilter} <button onClick={() => setSpecFilter('all')}><X className="h-3 w-3" /></button></Badge>}
                 {availFilter !== 'all' && <Badge variant="secondary" className="gap-1 capitalize">{availFilter} <button onClick={() => setAvailFilter('all')}><X className="h-3 w-3" /></button></Badge>}
@@ -372,18 +386,18 @@ export default function GuidesPage() {
       {/* ── Results count ── */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing <span className="font-semibold text-foreground">{filteredGuides.length}</span> of <span className="font-semibold text-foreground">{guides.length}</span> guides
+          Showing <span className="font-semibold text-foreground">{guides.length}</span> of <span className="font-semibold text-foreground">{totalGuides}</span> guides
         </p>
-        {filteredGuides.length > 0 && (
+        {guides.length > 0 && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            {filteredGuides.filter(g => onlineIds.includes(g._id)).length} online
+            {guides.filter(g => onlineIds.includes(g._id)).length} online on this page
           </div>
         )}
       </div>
 
       {/* ── Guide grid ── */}
-      {filteredGuides.length === 0 ? (
+      {guides.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-16 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
@@ -396,10 +410,42 @@ export default function GuidesPage() {
         </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredGuides.map(guide => (
+          {guides.map(guide => (
             <GuideCard key={guide._id} guide={guide} isOnline={onlineIds.includes(guide._id)} />
           ))}
         </div>
+      )}
+
+      {pages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                aria-disabled={page === 1}
+                className={page === 1 ? 'pointer-events-none opacity-50' : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (page > 1) setPage(page - 1);
+                }}
+              />
+            </PaginationItem>
+            <PaginationItem className="px-3 text-sm text-muted-foreground">
+              Page <span className="font-semibold text-foreground">{page}</span> of {pages}
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                aria-disabled={page === pages}
+                className={page === pages ? 'pointer-events-none opacity-50' : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (page < pages) setPage(page + 1);
+                }}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
     </div>
   );

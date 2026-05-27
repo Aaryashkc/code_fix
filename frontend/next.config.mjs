@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api')
+const localApiPort = apiUrl.port || '5001'
+
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -7,8 +10,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: 'avatars.githubusercontent.com' },
-      { protocol: 'http', hostname: 'localhost', port: '5000' },
-      { protocol: 'http', hostname: '127.0.0.1', port: '5000' },
+      { protocol: 'http', hostname: 'localhost', port: localApiPort },
+      { protocol: 'http', hostname: '127.0.0.1', port: localApiPort },
     ],
   },
 }

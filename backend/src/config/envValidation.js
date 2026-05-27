@@ -59,7 +59,7 @@ function validateEnv() {
   }
 
   const defaults = {
-    PORT: '5000',
+    PORT: '5001',
     NODE_ENV: 'development',
     JWT_EXPIRE: '7d',
     RATE_LIMIT_WINDOW_MS: '900000',

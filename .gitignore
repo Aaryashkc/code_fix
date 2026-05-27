@@ -56,3 +56,6 @@ instrumentation-client.ts
 # Local seed and database maintenance scripts
 /backend/src/seeds/
 /backend/src/utils/seeder.js
+
+CODE_AUDIT_REPORT.md
+IMPROVEMENT_BACKLOG.md

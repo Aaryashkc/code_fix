@@ -11,7 +11,7 @@ const { recordLiveTripEvent, recordLocationMilestone } = require('../utils/liveT
 function emitTripSnapshot(io, bookingId) {
   const snapshot = getLiveTripSnapshot(bookingId);
   if (snapshot) {
-    io.to(snapshot.room).emit('liveTripState', snapshot);
+    io.to(snapshot.room).to('admins').emit('liveTripState', snapshot);
   }
 }
 
@@ -53,7 +53,7 @@ function registerLocationHandlers({ io, socket }) {
         message: `${socket.userRole} joined live trip monitoring`,
       });
 
-      io.to(snapshot.room).emit('liveTripState', snapshot);
+      io.to(snapshot.room).to('admins').emit('liveTripState', snapshot);
       if (typeof acknowledge === 'function') {
         acknowledge({ success: true, data: snapshot });
       }
@@ -90,7 +90,7 @@ function registerLocationHandlers({ io, socket }) {
       });
 
       if (snapshot) {
-        io.to(snapshot.room).emit('liveTripState', snapshot);
+        io.to(snapshot.room).to('admins').emit('liveTripState', snapshot);
       }
 
       if (typeof acknowledge === 'function') {
@@ -145,17 +145,17 @@ function registerLocationHandlers({ io, socket }) {
       });
 
       if (locationEvent) {
-        io.to(snapshot.room).emit('liveTripEventRecorded', {
+        io.to(snapshot.room).to('admins').emit('liveTripEventRecorded', {
           bookingId,
           event: locationEvent,
         });
       }
 
-      io.to(snapshot.room).emit('tripLocationUpdated', {
+      io.to(snapshot.room).to('admins').emit('tripLocationUpdated', {
         bookingId,
         latestLocation: snapshot.latestLocation,
       });
-      io.to(snapshot.room).emit('liveTripState', snapshot);
+      io.to(snapshot.room).to('admins').emit('liveTripState', snapshot);
 
       if (typeof acknowledge === 'function') {
         acknowledge({ success: true, data: snapshot.latestLocation });
@@ -222,9 +222,8 @@ function registerLocationHandlers({ io, socket }) {
 
       alertPayload.event = sosEvent;
 
-      io.to(snapshot.room).emit('SOS_ALERT', alertPayload);
-      io.to('admins').emit('SOS_ALERT', alertPayload);
-      io.to(snapshot.room).emit('liveTripEventRecorded', {
+      io.to(snapshot.room).to('admins').emit('SOS_ALERT', alertPayload);
+      io.to(snapshot.room).to('admins').emit('liveTripEventRecorded', {
         bookingId,
         event: sosEvent,
       });
@@ -255,7 +254,7 @@ function registerLocationHandlers({ io, socket }) {
         message: `${socket.userRole} disconnected from live trip monitoring`,
       });
       if (snapshot) {
-        io.to(snapshot.room).emit('liveTripState', snapshot);
+        io.to(snapshot.room).to('admins').emit('liveTripState', snapshot);
       }
     }
   });

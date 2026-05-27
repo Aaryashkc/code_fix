@@ -1,22 +1,32 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useContext } from "react"
 import Link from "next/link"
-import { Menu, X } from "lucide-react"
+import { LayoutDashboard, LogOut, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { AuthContext, type UserRole } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
 const navLinks = [
+  { label: "Home", href: "/" },
+  { label: "Explore", href: "/destinations" },
   { label: "How It Works", href: "#how-it-works" },
-  { label: "Destinations", href: "#destinations" },
   { label: "Testimonials", href: "#testimonials" },
 ]
 
-export function Navbar() {
+function getDashboardRoute(role: UserRole): string {
+  if (role === "admin") return "/admin/dashboard"
+  if (role === "guide") return "/guide/dashboard"
+  return "/user/dashboard"
+}
+
+export function Navbar({ solid = false }: { solid?: boolean }) {
+  const auth = useContext(AuthContext)
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const dashboardRoute = auth?.user ? getDashboardRoute(auth.user.role) : "/"
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50)
@@ -31,7 +41,7 @@ export function Navbar() {
       transition={{ duration: 0.6, ease: "easeOut" }}
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-        scrolled
+        scrolled || solid
           ? "bg-card/95 backdrop-blur-xl border-b border-border shadow-sm"
           : "bg-transparent border-b border-transparent"
       )}
@@ -60,7 +70,7 @@ export function Navbar() {
             transition={{ type: "spring", stiffness: 400 }}
             className={cn(
               "text-2xl font-bold tracking-tight transition-colors duration-500 ",
-              scrolled ? "text-foreground" : "text-white"
+              scrolled || solid ? "text-foreground" : "text-white"
             )}
           >
             Yatra
@@ -78,7 +88,7 @@ export function Navbar() {
               transition={{ delay: 0.1 + i * 0.1 }}
               className={cn(
                 "relative text-sm font-medium transition-colors duration-300 hover:text-primary",
-                scrolled ? "text-muted-foreground" : "text-white/80 hover:text-white"
+                scrolled || solid ? "text-muted-foreground" : "text-white/80 hover:text-white"
               )}
             >
               {link.label}
@@ -89,40 +99,60 @@ export function Navbar() {
         {/* Desktop actions */}
         <div className="hidden items-center gap-3 md:flex">
           <ThemeToggle />
-          <Link href="/login">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "font-medium transition-colors duration-300",
-                  scrolled
-                    ? "text-foreground hover:bg-muted"
-                    : "text-white hover:bg-white/10"
-                )}
-              >
-                Login
-              </Button>
-            </motion.div>
-          </Link>
-          <Link href="/register">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            >
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-medium"
-              >
-                Get Started
-              </Button>
-            </motion.div>
-          </Link>
+          {!auth?.isLoading && (
+            auth?.user ? (
+              <>
+                <Link href={dashboardRoute}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "gap-2 font-medium transition-colors duration-300",
+                      scrolled || solid
+                        ? "text-foreground hover:bg-muted"
+                        : "text-white hover:bg-white/10"
+                    )}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+                <Button
+                  size="sm"
+                  onClick={() => auth.logout()}
+                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-medium"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "font-medium transition-colors duration-300",
+                      scrolled || solid
+                        ? "text-foreground hover:bg-muted"
+                        : "text-white hover:bg-white/10"
+                    )}
+                  >
+                    Login
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button
+                    size="sm"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-medium"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
+              </>
+            )
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -130,7 +160,7 @@ export function Navbar() {
           type="button"
           className={cn(
             "md:hidden transition-colors",
-            scrolled ? "text-foreground" : "text-white"
+            scrolled || solid ? "text-foreground" : "text-white"
           )}
           onClick={() => setOpen(!open)}
           aria-label={open ? "Close menu" : "Open menu"}
@@ -161,16 +191,41 @@ export function Navbar() {
                 </a>
               ))}
               <div className="flex flex-col gap-2 pt-2">
-                <Link href="/login">
-                  <Button variant="outline" className="w-full text-foreground border-border bg-transparent">
-                    Login
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button className="w-full bg-primary text-primary-foreground">
-                    Get Started
-                  </Button>
-                </Link>
+                {!auth?.isLoading && (
+                  auth?.user ? (
+                    <>
+                      <Link href={dashboardRoute} onClick={() => setOpen(false)}>
+                        <Button variant="outline" className="w-full gap-2 text-foreground border-border bg-transparent">
+                          <LayoutDashboard className="h-4 w-4" />
+                          Dashboard
+                        </Button>
+                      </Link>
+                      <Button
+                        onClick={() => {
+                          setOpen(false)
+                          auth.logout()
+                        }}
+                        className="w-full gap-2 bg-primary text-primary-foreground"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/login" onClick={() => setOpen(false)}>
+                        <Button variant="outline" className="w-full text-foreground border-border bg-transparent">
+                          Login
+                        </Button>
+                      </Link>
+                      <Link href="/register" onClick={() => setOpen(false)}>
+                        <Button className="w-full bg-primary text-primary-foreground">
+                          Get Started
+                        </Button>
+                      </Link>
+                    </>
+                  )
+                )}
               </div>
             </div>
           </motion.div>

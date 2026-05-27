@@ -19,6 +19,8 @@ import {
   Heart,
   Navigation,
   Sparkles,
+  Star,
+  X,
 } from 'lucide-react';
 import type { ExploreMarker } from '@/components/map/UserExploreMap';
 
@@ -220,50 +222,77 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="space-y-4 pb-6">
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <div className="flex flex-col gap-1">
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Discover</p>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-            <Compass className="h-6 w-6 text-primary" />
-            Explore Nepal
+    <div className="space-y-5 pb-6">
+      <section className="premium-hero animate-in fade-in slide-in-from-bottom-2 p-5 duration-300 sm:p-7">
+        <div className="relative z-10 flex flex-col gap-1">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            Map Explorer
+          </p>
+          <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold tracking-tight text-white">
+            Where will Nepal take you next?
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Discover destinations, compare ratings, and plan your perfect adventure.
+          <p className="mt-1 max-w-xl text-sm text-white/70">
+            Search verified places, scan the map, and save the stops that belong in your next trip.
           </p>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="relative z-10 mt-6 grid grid-cols-2 gap-2 sm:max-w-xl sm:grid-cols-4">
           {[
             { label: 'Total',      value: stats.total },
             { label: 'Showing',    value: stats.filtered },
             { label: 'Categories', value: stats.categories },
-            { label: 'Avg Rating', value: `⭐ ${stats.avgRating.toFixed(1)}` },
+            { label: 'Avg Rating', value: stats.avgRating.toFixed(1) },
           ].map((c) => (
-            <div key={c.label} className="flex flex-col rounded-xl p-3 ring-1 bg-muted/40 ring-border/60">
-              <span className="text-xl font-bold tabular-nums text-foreground">{c.value}</span>
-              <span className="mt-0.5 text-xs font-medium text-muted-foreground">{c.label}</span>
+            <div key={c.label} className="flex flex-col rounded-xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+              <span className="flex items-center gap-1 text-xl font-bold tabular-nums text-white">
+                {c.label === 'Avg Rating' && <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />}
+                {c.value}
+              </span>
+              <span className="mt-0.5 text-xs font-medium text-white/65">{c.label}</span>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <Card className="border border-border/60 shadow-sm">
+      <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardContent className="p-4 md:p-5">
-          <div className="mt-4 grid gap-2 md:grid-cols-[1fr_180px_auto_auto]">
+          <div className="mb-4">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <Search className="h-4 w-4 text-primary" aria-hidden="true" />
+              Search destinations
+            </p>
+            <p className="text-xs text-muted-foreground">Filter the map and destination list together.</p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-[minmax(240px,1fr)_180px_auto_auto]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <label htmlFor="map-destination-search" className="sr-only">Search destinations on map</label>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
+                id="map-destination-search"
+                type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by destination, address, or category"
-                className="pl-9"
+                className="h-11 rounded-xl pl-9 pr-9"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear destination search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
 
+            <label htmlFor="map-category-filter" className="sr-only">Filter by category</label>
             <select
+              id="map-category-filter"
               value={category}
               onChange={(event) => setCategory(event.target.value)}
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
             >
               {categories.map((entry) => (
                 <option key={entry} value={entry}>
@@ -276,7 +305,7 @@ export default function ExplorePage() {
               variant="outline"
               onClick={() => fetchDestinations(true)}
               disabled={refreshing}
-              className="gap-2"
+              className="h-11 gap-2 rounded-xl"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
@@ -286,23 +315,51 @@ export default function ExplorePage() {
               variant="outline"
               onClick={handleDetectLocation}
               disabled={locating}
-              className="gap-2"
+              className="h-11 gap-2 rounded-xl"
             >
               <LocateFixed className={`h-4 w-4 ${locating ? 'animate-pulse' : ''}`} />
               My Location
             </Button>
           </div>
 
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Destination categories">
+            {categories.map((entry) => (
+              <button
+                key={entry}
+                type="button"
+                onClick={() => setCategory(entry)}
+                aria-pressed={category === entry}
+                className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
+                  category === entry
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }`}
+              >
+                {entry}
+              </button>
+            ))}
+          </div>
+
           {errorMessage && (
-            <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div role="alert" className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {errorMessage}
             </div>
           )}
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="border border-border/60 shadow-sm overflow-hidden">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <Card className="overflow-hidden rounded-2xl border border-border/60 shadow-sm">
+          <div className="flex items-center justify-between border-b border-border/60 bg-card px-4 py-3">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <Compass className="h-4 w-4 text-primary" aria-hidden="true" />
+              Map view
+            </p>
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {stats.filtered} visible places
+              {lastUpdated ? ` | Updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+            </p>
+          </div>
           <div className="h-[60vh] min-h-[420px] w-full lg:h-[70vh]">
             <UserExploreMap
               markers={filteredDestinations}
@@ -315,14 +372,17 @@ export default function ExplorePage() {
 
         <div className="space-y-4">
           {selectedDestination ? (
-            <Card className="border border-border/60 shadow-sm">
+            <Card className="rounded-2xl border border-border/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">{selectedDestination.name}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>{selectedDestination.category}</Badge>
-                  <Badge variant="secondary">⭐ {selectedDestination.rating.toFixed(1)}</Badge>
+                  <Badge variant="secondary" className="gap-1">
+                    <Star className="h-3 w-3 fill-amber-500 text-amber-500" aria-hidden="true" />
+                    {selectedDestination.rating.toFixed(1)}
+                  </Badge>
                 </div>
 
                 <p className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -356,16 +416,19 @@ export default function ExplorePage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="border border-border/60 shadow-sm">
+            <Card className="rounded-2xl border border-border/60 shadow-sm">
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 Select a destination from map or list to view details.
               </CardContent>
             </Card>
           )}
 
-          <Card className="border border-border/60 shadow-sm">
+          <Card className="rounded-2xl border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Destination List</CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-lg">Destinations</CardTitle>
+                <Badge variant="secondary" aria-live="polite">{filteredDestinations.length} results</Badge>
+              </div>
             </CardHeader>
             <CardContent className="space-y-2">
               {filteredDestinations.length === 0 ? (
@@ -379,8 +442,10 @@ export default function ExplorePage() {
                     return (
                       <button
                         key={destination.id}
+                        type="button"
                         onClick={() => setSelectedId(destination.id)}
-                        className={`w-full rounded-md border p-3 text-left transition ${
+                        aria-pressed={isSelected}
+                        className={`w-full rounded-xl border p-3 text-left transition ${
                           isSelected
                             ? 'border-primary bg-primary/5'
                             : 'border-border hover:border-primary/40 hover:bg-muted/40'
@@ -392,7 +457,10 @@ export default function ExplorePage() {
                             <p className="truncate text-xs text-muted-foreground">{destination.address}</p>
                           </div>
                           <Badge variant="secondary" className="flex-shrink-0">
-                            ⭐ {destination.rating.toFixed(1)}
+                            <span className="inline-flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-amber-500 text-amber-500" aria-hidden="true" />
+                              {destination.rating.toFixed(1)}
+                            </span>
                           </Badge>
                         </div>
                       </button>

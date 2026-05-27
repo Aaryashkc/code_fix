@@ -4,13 +4,16 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search, Star, MapPin, X, Grid3x3, List, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Search, Star, MapPin, X, Grid3x3, List, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious,
+} from '@/components/ui/pagination';
 
 interface Place {
   _id: string;
@@ -27,6 +30,8 @@ interface Place {
   duration?: string;
 }
 
+const PAGE_SIZE = 12;
+
 export default function PlacesPage() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
@@ -36,6 +41,7 @@ export default function PlacesPage() {
   const [regionFilter, setRegionFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('rating');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [page, setPage] = useState(1);
 
   const categories = ['All', 'Religious', 'Nature', 'Adventure', 'Cultural', 'Urban'];
   const regions = ['All', 'Eastern', 'Central', 'Western', 'Far-Western'];
@@ -88,6 +94,17 @@ export default function PlacesPage() {
   useEffect(() => {
     filterAndSortPlaces();
   }, [filterAndSortPlaces]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, categoryFilter, regionFilter, sortBy]);
+
+  const pages = Math.max(1, Math.ceil(filteredPlaces.length / PAGE_SIZE));
+  const visiblePlaces = filteredPlaces.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > pages) setPage(pages);
+  }, [page, pages]);
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -273,11 +290,12 @@ export default function PlacesPage() {
           </CardContent>
         </Card>
       ) : (
+        <>
         <div className={viewMode === 'grid' 
           ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
           : 'space-y-4'
         }>
-          {filteredPlaces.map((place) => (
+          {visiblePlaces.map((place) => (
             <Link key={place._id} href={`/places/${place._id}`}>
               <Card className={`group overflow-hidden transition-all ${
                 viewMode === 'grid' ? 'hover:-translate-y-1' : ''
@@ -373,6 +391,38 @@ export default function PlacesPage() {
             </Link>
           ))}
         </div>
+        {pages > 1 && (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  aria-disabled={page === 1}
+                  className={page === 1 ? 'pointer-events-none opacity-50' : undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (page > 1) setPage(page - 1);
+                  }}
+                />
+              </PaginationItem>
+              <PaginationItem className="px-3 text-sm text-muted-foreground">
+                Page <span className="font-semibold text-foreground">{page}</span> of {pages}
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  aria-disabled={page === pages}
+                  className={page === pages ? 'pointer-events-none opacity-50' : undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (page < pages) setPage(page + 1);
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
+        </>
       )}
     </div>
   );

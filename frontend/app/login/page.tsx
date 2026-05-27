@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const auth = useContext(AuthContext)
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      await auth?.login(email, password)
+      await auth?.login(email, password, rememberMe)
       // If we get here, redirect is happening
     } catch (err: any) {
       setError(err.message || 'Login failed')
@@ -153,7 +154,12 @@ export default function LoginPage() {
             </div>
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                <input type="checkbox" className="rounded border-border" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-border"
+                />
                 Remember me
               </label>
               <Link href="/forgot-password" className="text-sm text-primary hover:underline">

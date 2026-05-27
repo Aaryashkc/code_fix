@@ -43,7 +43,7 @@ export default function AdminMapPage() {
 
   const fetchPlaces = useCallback(async () => {
     try {
-      const response = await api.get('/destinations');
+      const response = await api.get('/destinations/admin');
       setPlaces(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch places:', error);
@@ -105,17 +105,23 @@ export default function AdminMapPage() {
       triggeredBy?: string;
       event?: LiveTripEvent;
     }) => {
-      setLiveTrips((current) => upsertLiveTripSession(current, {
-        bookingId: payload.bookingId,
-        lastSOS: {
-          message: payload.message,
-          triggeredAt: payload.triggeredAt,
-          lat: payload.lat,
-          lng: payload.lng,
-          triggeredBy: payload.triggeredBy,
-        },
-        isLive: true,
-      }));
+      setLiveTrips((current) => {
+        const withAlert = upsertLiveTripSession(current, {
+          bookingId: payload.bookingId,
+          lastSOS: {
+            message: payload.message,
+            triggeredAt: payload.triggeredAt,
+            lat: payload.lat,
+            lng: payload.lng,
+            triggeredBy: payload.triggeredBy,
+          },
+          isLive: true,
+        });
+
+        return payload.event
+          ? prependLiveTripEvent(withAlert, payload.bookingId, payload.event)
+          : withAlert;
+      });
     };
 
     const handleEventRecorded = (payload: { bookingId: string; event: LiveTripEvent }) => {
@@ -158,6 +164,26 @@ export default function AdminMapPage() {
     () => buildLiveTripRoutePath(selectedLiveTrip?.destinations || []),
     [selectedLiveTrip]
   );
+
+  const liveTripFocusLocation = useMemo<[number, number] | null>(() => {
+    const sosLat = selectedLiveTrip?.lastSOS?.lat;
+    const sosLng = selectedLiveTrip?.lastSOS?.lng;
+
+    if (
+      typeof sosLat === 'number' &&
+      Number.isFinite(sosLat) &&
+      typeof sosLng === 'number' &&
+      Number.isFinite(sosLng)
+    ) {
+      return [sosLat, sosLng];
+    }
+
+    if (selectedLiveTrip?.latestLocation) {
+      return [selectedLiveTrip.latestLocation.lat, selectedLiveTrip.latestLocation.lng];
+    }
+
+    return null;
+  }, [selectedLiveTrip]);
 
   if (loading) {
     return (
@@ -223,25 +249,20 @@ export default function AdminMapPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {selectedLiveTrip ? (
-              <div className="h-[520px]">
-                <UserExploreMap
-                  markers={liveTripMarkers}
-                  selectedMarkerId={liveTripMarkers[0]?.id}
-                  onSelectMarker={() => {}}
-                  userLocation={
-                    selectedLiveTrip.latestLocation
-                      ? [selectedLiveTrip.latestLocation.lat, selectedLiveTrip.latestLocation.lng]
-                      : null
-                  }
-                  userLocationStatus={selectedLiveTrip.lastSOS ? 'sos' : 'default'}
-                  routePath={liveTripRoutePath}
-                />
-              </div>
-            ) : (
-              <div className="flex h-[520px] items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
-                No live sessions selected yet.
-              </div>
+            <div className="h-[520px]">
+              <UserExploreMap
+                markers={liveTripMarkers}
+                selectedMarkerId={liveTripMarkers[0]?.id}
+                onSelectMarker={() => {}}
+                userLocation={liveTripFocusLocation}
+                userLocationStatus={selectedLiveTrip?.lastSOS ? 'sos' : 'default'}
+                routePath={liveTripRoutePath}
+              />
+            </div>
+            {!selectedLiveTrip && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                No live sessions selected yet. The map will update when a monitored trip is available.
+              </p>
             )}
           </CardContent>
         </Card>

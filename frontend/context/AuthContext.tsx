@@ -57,7 +57,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   register: (data: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -94,9 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean) => {
     try {
-      const { user: loggedInUser } = await authUtils.login(email, password);
+      const { user: loggedInUser } = await authUtils.login(email, password, rememberMe);
       setUser(loggedInUser);
       router.push(getDashboardRoute(loggedInUser?.role));
     } catch (error: unknown) {

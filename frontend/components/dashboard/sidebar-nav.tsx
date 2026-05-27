@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Home,
+  LayoutDashboard,
   Compass,
   Briefcase,
   Heart,
@@ -15,7 +16,8 @@ import {
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { label: "Home", href: "/dashboard", icon: Home },
+  { label: "Home", href: "/", icon: Home },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Explore", href: "/destinations", icon: Compass },
   { label: "My Trips", href: "/user/trips", icon: Briefcase },
   { label: "Wishlist", href: "/user/wishlist", icon: Heart },

@@ -1,6 +1,17 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import HomePage from '@/app/page';
+
+const authState = vi.hoisted(() => ({
+  user: null as null | { id: string; name: string; email: string; role: 'admin' },
+  isLoading: false,
+  login: vi.fn(),
+  logout: vi.fn(),
+  register: vi.fn(),
+  refreshUser: vi.fn(),
+  setUser: vi.fn(),
+  isAuthenticated: false,
+}));
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
@@ -17,22 +28,18 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock AuthContext
-vi.mock('@/context/AuthContext', () => ({
-  AuthContext: {
-    Consumer: ({ children }: { children: React.ReactNode }) => children,
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-  },
-  useContext: () => ({
-    user: null,
-    isLoading: false,
-    login: vi.fn(),
-    logout: vi.fn(),
-  }),
-}));
+vi.mock('@/context/AuthContext', async () => {
+  const React = await vi.importActual<typeof import('react')>('react');
+  return {
+    AuthContext: React.createContext(authState),
+  };
+});
 
 describe('Smoke Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authState.user = null;
+    authState.isAuthenticated = false;
   });
 
   it('should render home page without crashing', () => {
@@ -51,5 +58,23 @@ describe('Smoke Tests', () => {
     // Check for common navigation elements
     const navElements = document.querySelectorAll('nav, header, [role="navigation"]');
     expect(navElements.length).toBeGreaterThan(0);
+  });
+
+  it('should show an admin dashboard action instead of login when authenticated', () => {
+    authState.user = {
+      id: 'admin-id',
+      name: 'Admin User',
+      email: 'admin@example.com',
+      role: 'admin',
+    };
+    authState.isAuthenticated = true;
+
+    render(<HomePage />);
+
+    expect(screen.getByRole('link', { name: /dashboard/i })).toHaveAttribute('href', '/admin/dashboard');
+    expect(screen.queryByRole('button', { name: 'Login' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+    expect(authState.logout).toHaveBeenCalledOnce();
   });
 });

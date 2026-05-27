@@ -1,5 +1,19 @@
 const mongoose = require('mongoose');
 
+const destinationMediaSchema = new mongoose.Schema({
+  publicId: {
+    type: String,
+    trim: true
+  },
+  url: {
+    type: String,
+    required: true,
+    trim: true
+  }
+}, {
+  _id: true
+});
+
 const destinationSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -30,6 +44,7 @@ const destinationSchema = new mongoose.Schema({
     required: true
   },
   images: [String],
+  media: [destinationMediaSchema],
   rating: {
     type: Number,
     default: 0,
