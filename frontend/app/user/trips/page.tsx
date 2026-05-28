@@ -391,8 +391,12 @@ export default function TripPlannerPage() {
     if (recommendedSpecialization) {
       params.set('specialization', recommendedSpecialization);
     }
+    if (plannerStops.length > 0) {
+      params.set('destinations', plannerStops.map((stop) => stop.place._id).join(','));
+      params.set('destinationName', plannerStops[0].place.name);
+    }
     return `/user/guides?${params.toString()}`;
-  }, [recommendedSpecialization]);
+  }, [plannerStops, recommendedSpecialization]);
 
   const saveTrip = useCallback(async () => {
     const trimmedName = tripName.trim();

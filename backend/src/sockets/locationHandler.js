@@ -2,6 +2,7 @@ const {
   getLiveTripSnapshot,
   joinTripSession,
   leaveTripSession,
+  stopTripLocation,
   triggerTripSOS,
   updateTripLocation,
 } = require('./liveTripState');
@@ -159,6 +160,49 @@ function registerLocationHandlers({ io, socket }) {
 
       if (typeof acknowledge === 'function') {
         acknowledge({ success: true, data: snapshot.latestLocation });
+      }
+    } catch (error) {
+      if (typeof acknowledge === 'function') {
+        acknowledge({ success: false, message: error.message });
+      }
+      socket.emit('liveTrip:error', { message: error.message });
+    }
+  });
+
+  socket.on('stopLocationSharing', async (payload = {}, acknowledge) => {
+    try {
+      const bookingId = String(payload.bookingId || '');
+      if (!bookingId) {
+        throw new Error('Booking ID is required');
+      }
+
+      const access = await getAccessibleBooking(bookingId, {
+        id: socket.userId,
+        role: socket.userRole,
+      });
+
+      if (!access.permissions.isTourist && !access.permissions.isAdmin) {
+        throw new Error('Only tourists can stop trip location sharing');
+      }
+
+      const snapshot = stopTripLocation(bookingId, access.metadata);
+      recordEventSafely({
+        bookingId,
+        type: 'trip_left',
+        actorId: socket.userId,
+        actorRole: socket.userRole,
+        message: `${socket.userRole} stopped live location sharing`,
+        metadata: { locationSharingStopped: true },
+      });
+
+      io.to(snapshot.room).to('admins').emit('tripLocationUpdated', {
+        bookingId,
+        latestLocation: null,
+      });
+      io.to(snapshot.room).to('admins').emit('liveTripState', snapshot);
+
+      if (typeof acknowledge === 'function') {
+        acknowledge({ success: true, data: snapshot });
       }
     } catch (error) {
       if (typeof acknowledge === 'function') {

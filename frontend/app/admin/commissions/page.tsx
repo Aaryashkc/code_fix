@@ -20,11 +20,9 @@ import {
   RefreshCw, 
   Calendar, 
   Settings, 
-  MapPin, 
   ChevronRight,
   Info,
   Sliders,
-  DollarSign
 } from 'lucide-react';
 
 interface GuideStats {
@@ -148,7 +146,8 @@ export default function AdminCommissionsPage() {
           description: 'Global default commission rate and buffer distance saved successfully.'
         });
         setSettingsOpen(false);
-        fetchDashboard(); // Refresh stats
+        await fetchGlobalSettings();
+        await fetchDashboard(); // Refresh stats
       }
     } catch (error: any) {
       toast({
@@ -284,7 +283,7 @@ export default function AdminCommissionsPage() {
             </Button>
             {(startDate || endDate) && (
               <Button 
-                onClick={() => { setStartDate(''); setEndDate(''); setTimeout(() => fetchDashboard()); }} 
+                onClick={() => { setStartDate(''); setEndDate(''); }} 
                 variant="ghost" 
                 className="h-9 font-medium"
               >

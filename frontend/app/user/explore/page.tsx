@@ -212,6 +212,18 @@ export default function ExplorePage() {
     return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originPart)}&destination=${encodeURIComponent(destinationPart)}&travelmode=driving`;
   }, [selectedDestination, userLocation]);
 
+  const findGuidesHref = useMemo(() => {
+    if (!selectedDestination) return '/user/guides';
+
+    const params = new URLSearchParams({
+      availability: 'available',
+      destinationId: selectedDestination.id,
+      destinationName: selectedDestination.name,
+    });
+
+    return `/user/guides?${params.toString()}`;
+  }, [selectedDestination]);
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -394,6 +406,12 @@ export default function ExplorePage() {
                   <Link href={`/places/${selectedDestination.id}`}>
                     <Button className="w-full">View Details</Button>
                   </Link>
+                  <Link href={findGuidesHref}>
+                    <Button variant="secondary" className="w-full">Find Guides</Button>
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
                     className="gap-1.5"
@@ -403,16 +421,15 @@ export default function ExplorePage() {
                     <Heart className="h-4 w-4" />
                     Save
                   </Button>
-                </div>
-
-                {directionsLink && (
-                  <a href={directionsLink} target="_blank" rel="noreferrer">
-                    <Button variant="outline" className="w-full gap-2">
+                  {directionsLink && (
+                    <a href={directionsLink} target="_blank" rel="noreferrer">
+                      <Button variant="outline" className="w-full gap-2">
                       <Navigation className="h-4 w-4" />
                       Open Directions
-                    </Button>
-                  </a>
-                )}
+                      </Button>
+                    </a>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ) : (

@@ -1,6 +1,37 @@
 const Commission = require('../models/Commission');
 const PlatformSettings = require('../models/PlatformSettings');
 const User = require('../models/User');
+const { ensureCommissionsForCompletedBookings, ensureCommissionsForGuide } = require('../utils/commissionBackfill');
+
+function mergeGuideCommissionStats(perGuideStats, guides) {
+  const statsByGuideId = new Map(
+    perGuideStats.map((entry) => [entry._id.toString(), entry])
+  );
+
+  return guides.map((guide) => {
+    const guideId = guide._id.toString();
+    const existing = statsByGuideId.get(guideId);
+
+    if (existing) {
+      return existing;
+    }
+
+    return {
+      _id: guide._id,
+      totalCommission: 0,
+      totalEarnings: 0,
+      totalBookings: 0,
+      avgRate: guide.commissionRate ?? null,
+      pendingAmount: 0,
+      guide,
+    };
+  }).sort((left, right) => {
+    if (right.totalCommission !== left.totalCommission) {
+      return right.totalCommission - left.totalCommission;
+    }
+    return (left.guide?.name || '').localeCompare(right.guide?.name || '');
+  });
+}
 
 // @desc    Get commission dashboard (admin overview)
 // @route   GET /api/commissions/dashboard
@@ -9,6 +40,8 @@ exports.getCommissionDashboard = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
+    await ensureCommissionsForCompletedBookings();
+
     const matchStage = {};
     if (startDate || endDate) {
       matchStage.createdAt = {};
@@ -16,7 +49,7 @@ exports.getCommissionDashboard = async (req, res) => {
       if (endDate) matchStage.createdAt.$lte = new Date(endDate);
     }
 
-    const [summary, perGuide] = await Promise.all([
+    const [summary, perGuideStats, guides] = await Promise.all([
       Commission.aggregate([
         { $match: matchStage },
         {
@@ -59,7 +92,11 @@ exports.getCommissionDashboard = async (req, res) => {
         },
         { $unwind: '$guide' },
         { $sort: { totalCommission: -1 } }
-      ])
+      ]),
+      User.find({ role: 'guide' })
+        .select('name email avatar commissionRate')
+        .sort({ name: 1 })
+        .lean()
     ]);
 
     const totals = summary[0] || {
@@ -80,7 +117,7 @@ exports.getCommissionDashboard = async (req, res) => {
           commissionCount: totals.count,
           averageRate: Math.round((totals.avgRate || 0) * 10000) / 100 // percent
         },
-        perGuide
+        perGuide: mergeGuideCommissionStats(perGuideStats, guides)
       }
     });
   } catch (error) {
@@ -93,6 +130,7 @@ exports.getCommissionDashboard = async (req, res) => {
 // @access  Private (Guide)
 exports.getMyCommissions = async (req, res) => {
   try {
+    await ensureCommissionsForGuide(req.user.id);
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;

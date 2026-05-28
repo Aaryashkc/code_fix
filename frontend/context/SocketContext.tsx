@@ -33,6 +33,7 @@ interface SocketContextType {
   joinTripRoom: (bookingId: string) => Promise<void>;
   leaveTripRoom: (bookingId: string) => Promise<void>;
   updateLocation: (payload: TripLocationPayload) => Promise<void>;
+  stopLocationSharing: (bookingId: string) => Promise<void>;
   triggerSOS: (payload: SosPayload) => Promise<void>;
 }
 
@@ -42,6 +43,7 @@ const SocketContext = createContext<SocketContextType>({
   joinTripRoom: async () => {},
   leaveTripRoom: async () => {},
   updateLocation: async () => {},
+  stopLocationSharing: async () => {},
   triggerSOS: async () => {},
 });
 
@@ -130,12 +132,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     await emitWithAck(socket, 'updateLocation', payload);
   }, [socket]);
 
+  const stopLocationSharing = useCallback(async (bookingId: string) => {
+    await emitWithAck(socket, 'stopLocationSharing', { bookingId });
+  }, [socket]);
+
   const triggerSOS = useCallback(async (payload: SosPayload) => {
     await emitWithAck(socket, 'triggerSOS', payload);
   }, [socket]);
 
   return (
-    <SocketContext.Provider value={{ isConnected, socket, joinTripRoom, leaveTripRoom, updateLocation, triggerSOS }}>
+    <SocketContext.Provider value={{ isConnected, socket, joinTripRoom, leaveTripRoom, updateLocation, stopLocationSharing, triggerSOS }}>
       {children}
     </SocketContext.Provider>
   );

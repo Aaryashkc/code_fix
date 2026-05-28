@@ -19,15 +19,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Activity, Loader2, LocateFixed, MapPinned, ShieldAlert, Siren, Wifi } from 'lucide-react';
+import { Activity, Loader2, LocateFixed, MapPinned, ShieldAlert, Siren } from 'lucide-react';
 import type { ExploreMarker } from '@/components/map/UserExploreMap';
 
 const UserExploreMap = dynamic(() => import('@/components/map/UserExploreMap'), { ssr: false });
+const ACTIVE_SHARING_STORAGE_KEY = 'yatra.activeLiveTripSharing';
 
 export default function ActiveTripPage() {
   const searchParams = useSearchParams();
   const requestedBookingId = searchParams.get('bookingId');
-  const { socket, isConnected, joinTripRoom, leaveTripRoom, triggerSOS, updateLocation } = useSocket();
+  const { socket, isConnected, joinTripRoom, leaveTripRoom, stopLocationSharing, triggerSOS, updateLocation } = useSocket();
 
   const [sessions, setSessions] = useState<LiveTripSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +38,8 @@ export default function ActiveTripPage() {
 
   const selectedBookingIdRef = useRef('');
   const watchIdRef = useRef<number | null>(null);
+  const isConnectedRef = useRef(false);
+  const stopLocationSharingRef = useRef(stopLocationSharing);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -71,6 +74,11 @@ export default function ActiveTripPage() {
   useEffect(() => {
     selectedBookingIdRef.current = selectedBookingId;
   }, [selectedBookingId]);
+
+  useEffect(() => {
+    isConnectedRef.current = isConnected;
+    stopLocationSharingRef.current = stopLocationSharing;
+  }, [isConnected, stopLocationSharing]);
 
   const selectedSession = useMemo(
     () => sessions.find((session) => session.bookingId === selectedBookingId) || null,
@@ -157,19 +165,44 @@ export default function ActiveTripPage() {
     };
   }, [socket]);
 
-  const stopSharing = useCallback(() => {
+  const stopSharing = useCallback((clearPreference = true) => {
+    const bookingId = selectedBookingIdRef.current;
+
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
+
+    if (clearPreference) {
+      window.localStorage.removeItem(ACTIVE_SHARING_STORAGE_KEY);
+    }
+
     setSharingLocation(false);
+    if (bookingId) {
+      setSessions((current) => upsertLiveTripSession(current, {
+        bookingId,
+        latestLocation: null,
+        isLive: false,
+      }));
+
+      if (isConnectedRef.current) {
+        void stopLocationSharingRef.current(bookingId).catch((error: Error) => {
+          console.error('Failed to stop live sharing:', error);
+        });
+      }
+    }
   }, []);
 
-  useEffect(() => stopSharing, [stopSharing]);
+  useEffect(() => () => stopSharing(false), [stopSharing]);
 
   const startSharing = useCallback(() => {
     if (!selectedBookingIdRef.current) {
       toast.error('Select a trip before starting live sharing');
+      return;
+    }
+
+    if (!isConnected) {
+      toast.error('Live sharing needs the socket connection to be online');
       return;
     }
 
@@ -184,6 +217,7 @@ export default function ActiveTripPage() {
     }
 
     setSharingLocation(true);
+    window.localStorage.setItem(ACTIVE_SHARING_STORAGE_KEY, selectedBookingIdRef.current);
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const payload = {
@@ -223,7 +257,16 @@ export default function ActiveTripPage() {
     );
 
     toast.success('Live location sharing started');
-  }, [stopSharing, updateLocation]);
+  }, [isConnected, stopSharing, updateLocation]);
+
+  useEffect(() => {
+    if (!selectedBookingId || watchIdRef.current !== null) return;
+
+    const activeBookingId = window.localStorage.getItem(ACTIVE_SHARING_STORAGE_KEY);
+    if (activeBookingId !== selectedBookingId) return;
+
+    startSharing();
+  }, [selectedBookingId, startSharing]);
 
   const handleTriggerSos = useCallback(async () => {
     if (!selectedSession) {
@@ -301,7 +344,7 @@ export default function ActiveTripPage() {
           {[
             { label: 'Eligible Trips', value: sessions.length },
             { label: 'Socket',         value: isConnected ? 'Live' : 'Offline' },
-            { label: 'Broadcasting',   value: sharingLocation ? 'On' : 'Off' },
+            { label: 'Tracking',       value: sharingLocation ? 'Sharing' : selectedSession?.isLive ? 'Live' : 'Ready' },
           ].map((c) => (
             <div key={c.label} className="flex flex-col rounded-xl p-3.5 ring-1 bg-muted/40 ring-border/60">
               <span className="text-xl font-bold tabular-nums text-foreground">{c.value}</span>
@@ -374,10 +417,14 @@ export default function ActiveTripPage() {
                   <Button
                     variant={sharingLocation ? 'outline' : 'default'}
                     className="gap-2"
-                    onClick={sharingLocation ? stopSharing : startSharing}
+                    onClick={() => {
+                      if (sharingLocation) stopSharing();
+                      else startSharing();
+                    }}
+                    disabled={!sharingLocation && !isConnected}
                   >
                     {sharingLocation ? <Activity className="h-4 w-4" /> : <LocateFixed className="h-4 w-4" />}
-                    {sharingLocation ? 'Stop Sharing' : 'Start Trip'}
+                    {sharingLocation ? 'Stop Sharing' : 'Share Live'}
                   </Button>
                   <Button
                     variant="destructive"
@@ -431,7 +478,9 @@ export default function ActiveTripPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Tracking</span>
-                    <span className="font-medium">{sharingLocation ? 'Broadcasting' : 'Not sharing'}</span>
+                    <span className="font-medium">
+                      {sharingLocation ? 'Broadcasting from this device' : selectedSession?.isLive ? 'Live session active' : 'Not sharing'}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Participants in room</span>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useContext } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useMemo, useState, useContext } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { AuthContext } from '@/context/AuthContext';
 import { NotificationContext } from '@/context/NotificationContext';
@@ -66,6 +66,13 @@ interface BookingHistoryItem {
   customerFrom: string;
 }
 
+interface DestinationOption {
+  _id: string;
+  name: string;
+  category?: string;
+  region?: string;
+}
+
 interface ActiveBooking {
   _id: string;
   status: string;
@@ -86,9 +93,11 @@ interface ActiveBooking {
 
 export default function GuideProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const auth = useContext(AuthContext);
   const [guide, setGuide] = useState<Guide | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [destinationOptions, setDestinationOptions] = useState<DestinationOption[]>([]);
   const [bookingHistory, setBookingHistory] = useState<BookingHistoryItem[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotal, setHistoryTotal] = useState(0);
@@ -106,11 +115,27 @@ export default function GuideProfilePage() {
     endDate: '',
     groupSize: 1,
     packageType: 'Full Day Adventure',
+    selectedDestinationIds: [] as string[],
     specialRequirements: '',
     message: '',
   });
 
   const [offeredPrice, setOfferedPrice] = useState(0);
+
+  const initialDestinationIds = useMemo(() => {
+    const rawIds = [
+      searchParams.get('destinationId'),
+      ...(searchParams.get('destinations') || '').split(','),
+    ];
+
+    return Array.from(new Set(rawIds.map((id) => id?.trim()).filter(Boolean))) as string[];
+  }, [searchParams]);
+
+  const initialDestinationName = searchParams.get('destinationName');
+  const guidesBackHref = useMemo(() => {
+    const query = searchParams.toString();
+    return `/user/guides${query ? `?${query}` : ''}`;
+  }, [searchParams]);
 
   useEffect(() => {
     if (params.id) {
@@ -169,6 +194,30 @@ export default function GuideProfilePage() {
       setGuide(guideRes.data.data);
 
       try {
+        const destinationsRes = await api.get('/destinations?limit=30&sort=name');
+        const baseOptions = destinationsRes.data.data || [];
+        const existingIds = new Set(baseOptions.map((destination: DestinationOption) => destination._id));
+        const missingIds = initialDestinationIds.filter((id) => !existingIds.has(id));
+        const selectedOptions = await Promise.all(
+          missingIds.map(async (id) => {
+            try {
+              const destinationRes = await api.get(`/destinations/${id}`);
+              return destinationRes.data.data as DestinationOption;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        setDestinationOptions([
+          ...selectedOptions.filter((destination): destination is DestinationOption => Boolean(destination)),
+          ...baseOptions,
+        ]);
+      } catch {
+        setDestinationOptions([]);
+      }
+
+      try {
         const reviewsRes = await api.get(`/reviews/guide/${params.id}`);
         setReviews(reviewsRes.data.data || []);
       } catch {
@@ -182,6 +231,24 @@ export default function GuideProfilePage() {
     }
   };
 
+  useEffect(() => {
+    if (initialDestinationIds.length === 0 || destinationOptions.length === 0) return;
+
+    const availableIds = new Set(destinationOptions.map((destination) => destination._id));
+    const selectableIds = initialDestinationIds.filter((id) => availableIds.has(id));
+    if (selectableIds.length === 0) return;
+
+    setBookingData((current) => {
+      const mergedIds = Array.from(new Set([...current.selectedDestinationIds, ...selectableIds]));
+      if (mergedIds.length === current.selectedDestinationIds.length) return current;
+
+      return {
+        ...current,
+        selectedDestinationIds: mergedIds,
+      };
+    });
+  }, [destinationOptions, initialDestinationIds]);
+
   const calculateDays = () => {
     if (!bookingData.startDate || !bookingData.endDate) return 0;
     const start = new Date(bookingData.startDate);
@@ -194,9 +261,25 @@ export default function GuideProfilePage() {
     return calculateDays() * guide.pricePerDay;
   };
 
+  const toggleDestination = (destinationId: string) => {
+    setBookingData((current) => {
+      const exists = current.selectedDestinationIds.includes(destinationId);
+      return {
+        ...current,
+        selectedDestinationIds: exists
+          ? current.selectedDestinationIds.filter((id) => id !== destinationId)
+          : [...current.selectedDestinationIds, destinationId],
+      };
+    });
+  };
+
   const handleSendRequest = async () => {
     if (!bookingData.startDate || !bookingData.endDate) {
       toast.error('Please select dates');
+      return;
+    }
+    if (bookingData.selectedDestinationIds.length === 0) {
+      toast.error('Please select at least one place to visit');
       return;
     }
     if (offeredPrice <= 0) {
@@ -210,6 +293,7 @@ export default function GuideProfilePage() {
         guideId: params.id,
         startDate: bookingData.startDate,
         endDate: bookingData.endDate,
+        destinations: bookingData.selectedDestinationIds,
         numberOfDays: calculateDays(),
         packageType: bookingData.packageType,
         groupSize: bookingData.groupSize,
@@ -309,7 +393,7 @@ export default function GuideProfilePage() {
     <div className="min-h-screen bg-background pb-8">
       {/* Back Button */}
       <div className="container mx-auto px-4 py-4">
-        <Link href="/user/guides">
+        <Link href={guidesBackHref}>
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Guides
@@ -556,6 +640,49 @@ export default function GuideProfilePage() {
                             </div>
 
                             <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                Places to Visit
+                              </label>
+                              {initialDestinationName && (
+                                <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+                                  Selected from explore: <span className="font-semibold">{initialDestinationName}</span>
+                                </p>
+                              )}
+                              {destinationOptions.length > 0 ? (
+                                <div className="grid max-h-48 grid-cols-1 gap-2 overflow-y-auto rounded-xl border p-2 sm:grid-cols-2">
+                                  {destinationOptions.map((destination) => {
+                                    const selected = bookingData.selectedDestinationIds.includes(destination._id);
+                                    return (
+                                      <button
+                                        key={destination._id}
+                                        type="button"
+                                        onClick={() => toggleDestination(destination._id)}
+                                        className={`flex min-h-14 items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                                          selected
+                                            ? 'border-primary bg-primary/10 text-primary'
+                                            : 'border-border hover:border-primary/40 hover:bg-muted/40'
+                                        }`}
+                                      >
+                                        <CheckCircle className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? 'opacity-100' : 'opacity-25'}`} />
+                                        <span className="min-w-0">
+                                          <span className="block font-medium leading-tight">{destination.name}</span>
+                                          <span className="block text-xs text-muted-foreground">
+                                            {[destination.category, destination.region].filter(Boolean).join(' - ') || 'Destination'}
+                                          </span>
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
+                                  Approved destinations could not be loaded right now.
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
                               <label className="text-sm font-medium">Package Type</label>
                               <div className="grid grid-cols-3 gap-3">
                                 {['Half Day Tour', 'Full Day Adventure', 'Multi-Day Expedition'].map((type) => (
@@ -602,6 +729,10 @@ export default function GuideProfilePage() {
                               onClick={() => {
                                 if (!bookingData.startDate || !bookingData.endDate) {
                                   toast.error('Please select both start and end dates');
+                                  return;
+                                }
+                                if (bookingData.selectedDestinationIds.length === 0) {
+                                  toast.error('Please select at least one place to visit');
                                   return;
                                 }
                                 setBookingStep('price');

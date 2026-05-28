@@ -15,7 +15,8 @@ const {
   getAllBookings,
   counterOffer,
   reviseOffer,
-  acceptPrice
+  acceptPrice,
+  updateBookingDestinations
 } = require('../controllers/bookingController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -37,6 +38,7 @@ router.get('/', protect, authorize('admin'), getAllBookings);
 router.get('/:id', protect, getBooking);
 router.post('/', protect, authorize('tourist'), createBooking);
 router.put('/:id/cancel', protect, authorize('tourist'), cancelBooking);
+router.patch('/:id/destinations', protect, authorize('tourist'), updateBookingDestinations);
 // C-3: POST /:id/review removed — use POST /api/reviews instead (standalone Review model)
 router.put('/:id/accept', protect, authorize('guide'), acceptBooking);
 router.put('/:id/decline', protect, authorize('guide'), declineBooking);

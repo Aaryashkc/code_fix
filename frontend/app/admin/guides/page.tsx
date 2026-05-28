@@ -622,7 +622,7 @@ export default function AdminGuidesPage() {
         Showing {filteredGuides.length} of {guides.length} guides
       </p>
 
-      {/* Guides List */}
+      {/* Guides Cards */}
       {filteredGuides.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="py-16 text-center">
@@ -634,15 +634,15 @@ export default function AdminGuidesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredGuides.map((guide) => {
             const currentAction = actionLoading[guide._id];
             const isBusy = Boolean(currentAction);
 
             return (
-              <Card key={guide._id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
+              <Card key={guide._id} className="h-full overflow-hidden border shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-5">
+                  <div className="flex flex-col gap-4">
                     {/* Avatar */}
                     <div className="relative h-16 w-16 rounded-full overflow-hidden border-2 border-muted flex-shrink-0">
                       <Image
@@ -654,7 +654,7 @@ export default function AdminGuidesPage() {
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold text-lg">{guide.name}</h3>
                         {guide.suspended ? (
@@ -724,109 +724,23 @@ export default function AdminGuidesPage() {
 
                       <p className="text-xs text-muted-foreground mt-2">
                         Joined {new Date(guide.createdAt).toLocaleDateString()}
-                        {guide.licenseNumber && <> · License: {guide.licenseNumber}</>}
+                        {guide.licenseNumber && <> - License: {guide.licenseNumber}</>}
                       </p>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col gap-2 ml-2 flex-shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditModal(guide)}
-                        disabled={isBusy}
-                      >
-                        <Pencil className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-
-                      {guide.suspended ? (
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => handleRestore(guide._id)}
-                          disabled={isBusy}
-                        >
-                          {currentAction === 'restore' ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                          )}
-                          Restore
-                        </Button>
-                      ) : !guide.verified ? (
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => handleVerify(guide._id)}
-                          disabled={isBusy}
-                        >
-                          {currentAction === 'verify' ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                          )}
-                          Verify
-                        </Button>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => openEditModal(guide)}
+                      disabled={isBusy}
+                    >
+                      {currentAction ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleUnverify(guide._id)}
-                          disabled={isBusy}
-                        >
-                          {currentAction === 'verify' ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <XCircle className="h-4 w-4 mr-1" />
-                          )}
-                          Unverify
-                        </Button>
+                        <Pencil className="mr-2 h-4 w-4" />
                       )}
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setPasswordResetTarget(guide);
-                          setNewPassword('');
-                          setShowPassword(false);
-                        }}
-                        disabled={isBusy}
-                      >
-                        <KeyRound className="h-4 w-4 mr-1" />
-                        Password
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-amber-200 text-amber-600 hover:bg-amber-50 disabled:border-amber-100 disabled:text-amber-300"
-                        onClick={() => setSuspendTarget(guide)}
-                        disabled={isBusy || guide.suspended}
-                      >
-                        {currentAction === 'suspend' ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        ) : (
-                          <Ban className="h-4 w-4 mr-1" />
-                        )}
-                        {guide.suspended ? 'Suspended' : 'Suspend'}
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => setRevokeTarget(guide)}
-                        disabled={isBusy}
-                      >
-                        {currentAction === 'revoke' ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        ) : (
-                          <ShieldOff className="h-4 w-4 mr-1" />
-                        )}
-                        Revoke
-                      </Button>
-                    </div>
+                      Manage Guide
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -847,11 +761,137 @@ export default function AdminGuidesPage() {
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Guide — {editGuide?.name}</DialogTitle>
+            <DialogTitle>Edit Guide - {editGuide?.name}</DialogTitle>
             <DialogDescription>
-              Update guide details. Changes are saved immediately.
+              Update profile details and manage account actions from one place.
             </DialogDescription>
           </DialogHeader>
+
+          {editGuide && (
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Guide actions</p>
+                  <p className="text-xs text-muted-foreground">
+                    Verification, password, suspension, and access controls for this guide.
+                  </p>
+                </div>
+                {editGuide.suspended ? (
+                  <Badge variant="destructive" className="gap-1">
+                    <Ban className="h-3 w-3" /> Suspended
+                  </Badge>
+                ) : editGuide.verified ? (
+                  <Badge className="gap-1 border-emerald-200 bg-emerald-100 text-emerald-800">
+                    <UserCheck className="h-3 w-3" /> Verified
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="gap-1">
+                    <UserXIcon className="h-3 w-3" /> Unverified
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {editGuide.suspended ? (
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => handleRestore(editGuide._id)}
+                    disabled={Boolean(actionLoading[editGuide._id])}
+                  >
+                    {actionLoading[editGuide._id] === 'restore' ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                    )}
+                    Restore
+                  </Button>
+                ) : !editGuide.verified ? (
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => handleVerify(editGuide._id)}
+                    disabled={Boolean(actionLoading[editGuide._id])}
+                  >
+                    {actionLoading[editGuide._id] === 'verify' ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                    )}
+                    Verify
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleUnverify(editGuide._id)}
+                    disabled={Boolean(actionLoading[editGuide._id])}
+                  >
+                    {actionLoading[editGuide._id] === 'verify' ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <XCircle className="mr-2 h-4 w-4" />
+                    )}
+                    Unverify
+                  </Button>
+                )}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setPasswordResetTarget(editGuide);
+                    setNewPassword('');
+                    setShowPassword(false);
+                    setEditGuide(null);
+                    setEditForm(EMPTY_EDIT_FORM);
+                  }}
+                  disabled={Boolean(actionLoading[editGuide._id])}
+                >
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Reset Password
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  onClick={() => {
+                    setSuspendTarget(editGuide);
+                    setEditGuide(null);
+                    setEditForm(EMPTY_EDIT_FORM);
+                  }}
+                  disabled={Boolean(actionLoading[editGuide._id]) || editGuide.suspended}
+                >
+                  {actionLoading[editGuide._id] === 'suspend' ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Ban className="mr-2 h-4 w-4" />
+                  )}
+                  {editGuide.suspended ? 'Suspended' : 'Suspend'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="sm:col-span-2 lg:col-span-3"
+                  onClick={() => {
+                    setRevokeTarget(editGuide);
+                    setEditGuide(null);
+                    setEditForm(EMPTY_EDIT_FORM);
+                  }}
+                  disabled={Boolean(actionLoading[editGuide._id])}
+                >
+                  {actionLoading[editGuide._id] === 'revoke' ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldOff className="mr-2 h-4 w-4" />
+                  )}
+                  Revoke Guide Access
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-5 py-2">
             {/* Basic Info */}

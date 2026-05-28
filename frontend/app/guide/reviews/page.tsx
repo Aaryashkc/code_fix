@@ -1,14 +1,14 @@
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { AuthContext } from '@/context/AuthContext';
 import api from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Star, MessageSquare, ThumbsUp, Send, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Star, MessageSquare, ThumbsUp, Send, Loader2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CategoryRatings {
@@ -57,17 +57,36 @@ export default function GuideReviewsPage() {
   const [replying, setReplying] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (!guideId) return;
-    api.get(`/reviews/guide/${guideId}`)
-      .then(r => setReviews(r.data.data ?? []))
-      .catch(() => toast.error('Failed to load reviews'))
-      .finally(() => setLoading(false));
+  const fetchReviews = useCallback(async (showRefresh = false) => {
+    if (!guideId) {
+      setLoading(false);
+      return;
+    }
+
+    if (showRefresh) setRefreshing(true);
+    else setLoading(true);
+    try {
+      const response = await api.get(`/reviews/guide/${guideId}`);
+      setReviews(response.data.data ?? []);
+    } catch {
+      toast.error('Failed to load reviews');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [guideId]);
 
+  useEffect(() => { void fetchReviews(); }, [fetchReviews]);
+
   const toggleExpand = (id: string) =>
-    setExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const submitReply = async (reviewId: string) => {
     if (!replyText.trim()) { toast.error('Reply cannot be empty'); return; }
@@ -80,6 +99,7 @@ export default function GuideReviewsPage() {
       ));
       setReplying(null);
       setReplyText('');
+      void fetchReviews(true);
     } catch (e: any) {
       toast.error(e.response?.data?.message ?? 'Failed to post reply');
     } finally { setSubmitting(false); }
@@ -104,9 +124,14 @@ export default function GuideReviewsPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-8">
       {/* ── header ── */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">My Reviews</h1>
-        <p className="text-sm text-muted-foreground mt-1">What travellers say about guiding with you</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">My Reviews</h1>
+          <p className="text-sm text-muted-foreground mt-1">What travellers say about guiding with you</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => fetchReviews(true)} disabled={refreshing} className="gap-2 shrink-0">
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />Refresh
+        </Button>
       </div>
 
       {reviews.length === 0 ? (

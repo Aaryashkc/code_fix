@@ -1,7 +1,6 @@
 'use client';
 
-import { useContext, useEffect, useState, useCallback } from 'react';
-import { AuthContext } from '@/context/AuthContext';
+import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import { formatNPR } from '@/lib/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Wallet, TrendingUp, CheckCircle, Clock, Banknote,
@@ -74,8 +72,6 @@ const COMMISSION_METHODS = [
 
 /* ─── component ──────────────────────────────────────────────── */
 export default function GuideEarningsPage() {
-  const auth = useContext(AuthContext);
-
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [meta,        setMeta]        = useState<PayoutMeta | null>(null);
   const [loading,     setLoading]     = useState(true);
@@ -88,7 +84,8 @@ export default function GuideEarningsPage() {
   const [requesting,  setRequesting]  = useState(false);
 
   const fetchAll = useCallback(async (showRefresh = false) => {
-    showRefresh ? setRefreshing(true) : setLoading(true);
+    if (showRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
       const [comRes, metaRes] = await Promise.all([
         api.get('/commissions/my'),
@@ -109,7 +106,7 @@ export default function GuideEarningsPage() {
       toast.success(r.data.message ?? 'Payout request submitted!');
       setDialog(false);
       setPayNotes('');
-      fetchAll(true);
+      await fetchAll(true);
     } catch (e: any) {
       toast.error(e.response?.data?.message ?? 'Failed to submit payout request');
     } finally { setRequesting(false); }

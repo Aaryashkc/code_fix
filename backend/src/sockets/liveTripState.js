@@ -55,7 +55,7 @@ function createSnapshot(session) {
     lastSOS: session.lastSOS,
     participantCount: session.participantSockets.size,
     connectedRoles: Array.from(session.connectedRoles),
-    isLive: Boolean(session.participantSockets.size > 0 || session.latestLocation || session.lastSOS),
+    isLive: Boolean(session.latestLocation),
     updatedAt: session.updatedAt,
   };
 }
@@ -130,6 +130,18 @@ function triggerTripSOS(bookingId, metadata, alert) {
   return createSnapshot(session);
 }
 
+function stopTripLocation(bookingId, metadata = {}) {
+  const session = liveTripSessions.get(String(bookingId));
+  if (!session) {
+    return createSnapshot(ensureSession(bookingId, metadata));
+  }
+
+  mergeMetadata(session, metadata);
+  session.latestLocation = null;
+  session.updatedAt = new Date().toISOString();
+  return createSnapshot(session);
+}
+
 function getLiveTripSnapshot(bookingId) {
   const session = liveTripSessions.get(String(bookingId));
   return session ? createSnapshot(session) : null;
@@ -146,6 +158,7 @@ module.exports = {
   joinTripSession,
   leaveTripSession,
   listLiveTripSnapshots,
+  stopTripLocation,
   triggerTripSOS,
   updateTripLocation,
 };

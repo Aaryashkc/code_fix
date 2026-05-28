@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import api from '@/lib/api';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -57,11 +57,11 @@ function initials(name: string) {
 }
 
 /* ── Guide Card (property card style) ── */
-function GuideCard({ guide, isOnline }: { guide: Guide; isOnline: boolean }) {
+function GuideCard({ guide, href, isOnline }: { guide: Guide; href: string; isOnline: boolean }) {
   const grad = coverGrad(guide.specializations);
 
   return (
-    <Link href={`/guides/${guide._id}`}>
+    <Link href={href}>
       <Card className="group h-full overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(8,40,20,0.15)] cursor-pointer">
         {/* ── Cover image area ── */}
         <div className={`relative h-44 bg-gradient-to-br ${grad} overflow-hidden`}>
@@ -192,6 +192,21 @@ export default function GuidesPage() {
   const [sortBy,          setSortBy]          = useState('rating');
   const [onlineIds,       setOnlineIds]       = useState<string[]>([]);
   const [showFilters,     setShowFilters]     = useState(false);
+
+  const bookingContextQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    const destinationId = searchParams.get('destinationId');
+    const destinations = searchParams.get('destinations');
+    const destinationName = searchParams.get('destinationName');
+
+    if (destinationId) params.set('destinationId', destinationId);
+    if (destinations) params.set('destinations', destinations);
+    if (destinationName) params.set('destinationName', destinationName);
+
+    return params.toString();
+  }, [searchParams]);
+
+  const selectedDestinationName = searchParams.get('destinationName');
 
   const fetchGuides = useCallback(async () => {
     const sort: Record<string, string> = {
@@ -385,9 +400,16 @@ export default function GuidesPage() {
 
       {/* ── Results count ── */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Showing <span className="font-semibold text-foreground">{guides.length}</span> of <span className="font-semibold text-foreground">{totalGuides}</span> guides
-        </p>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{guides.length}</span> of <span className="font-semibold text-foreground">{totalGuides}</span> guides
+          </p>
+          {selectedDestinationName && (
+            <p className="text-xs text-primary">
+              Booking place selected: <span className="font-semibold">{selectedDestinationName}</span>
+            </p>
+          )}
+        </div>
         {guides.length > 0 && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -411,7 +433,12 @@ export default function GuidesPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {guides.map(guide => (
-            <GuideCard key={guide._id} guide={guide} isOnline={onlineIds.includes(guide._id)} />
+            <GuideCard
+              key={guide._id}
+              guide={guide}
+              href={`/guides/${guide._id}${bookingContextQuery ? `?${bookingContextQuery}` : ''}`}
+              isOnline={onlineIds.includes(guide._id)}
+            />
           ))}
         </div>
       )}

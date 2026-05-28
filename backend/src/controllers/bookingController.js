@@ -1,12 +1,80 @@
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Commission = require('../models/Commission');
+const Review = require('../models/Review');
+const Destination = require('../models/Destination');
 const PlatformSettings = require('../models/PlatformSettings');
 const mongoose = require('mongoose');
 const { createAndEmit } = require('../utils/notificationService');
 const { calculateCommission, resolveCommissionRate } = require('../utils/commissionUtils');
+const { ensureCommissionsForGuide } = require('../utils/commissionBackfill');
 
 const BOOKING_EXPIRY_MINUTES = 30;
+
+async function normalizeAvailableDestinationIds(destinations) {
+  if (!Array.isArray(destinations)) {
+    const error = new Error('Select at least one destination');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const normalizedIds = [...new Set(destinations.map((id) => String(id)).filter(Boolean))];
+  if (normalizedIds.length === 0) {
+    const error = new Error('Select at least one destination');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (normalizedIds.length > 10) {
+    const error = new Error('Select at most 10 destinations');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (normalizedIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+    const error = new Error('One or more destinations are invalid');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const validCount = await Destination.countDocuments({
+    _id: { $in: normalizedIds },
+    published: true,
+    verificationStatus: 'approved'
+  });
+
+  if (validCount !== normalizedIds.length) {
+    const error = new Error('One or more destinations are unavailable');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return normalizedIds;
+}
+
+async function attachReviewState(bookings, reviewerId) {
+  const bookingIds = bookings.map((booking) => booking._id);
+  const reviews = await Review.find({
+    reviewer: reviewerId,
+    booking: { $in: bookingIds }
+  }).select('booking rating comment createdAt').lean();
+
+  const reviewsByBookingId = new Map(
+    reviews.map((review) => [review.booking.toString(), review])
+  );
+
+  return bookings.map((bookingDoc) => {
+    const booking = bookingDoc.toObject ? bookingDoc.toObject() : bookingDoc;
+    const review = reviewsByBookingId.get(booking._id.toString());
+    if (review) {
+      booking.review = {
+        rating: review.rating,
+        comment: review.comment,
+        createdAt: review.createdAt
+      };
+    }
+    booking.hasReview = Boolean(review || booking.review?.rating);
+    return booking;
+  });
+}
 
 // @desc    Create booking request (InDrive style - tourist proposes price)
 // @route   POST /api/bookings
@@ -74,6 +142,16 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+    let destinationIds;
+    try {
+      destinationIds = await normalizeAvailableDestinationIds(destinations);
+    } catch (error) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
     // Set expiry time (30 minutes from now)
     const expiresAt = new Date(Date.now() + BOOKING_EXPIRY_MINUTES * 60 * 1000);
 
@@ -81,7 +159,7 @@ exports.createBooking = async (req, res) => {
     const booking = await Booking.create({
       tourist: req.user.id,
       guide: guideId,
-      destinations,
+      destinations: destinationIds,
       startDate,
       endDate,
       numberOfDays,
@@ -362,11 +440,12 @@ exports.getMyBookings = async (req, res) => {
       .populate('guide', 'name email avatar rating pricePerDay')
       .populate('destinations', 'name images location')
       .sort('-createdAt');
+    const data = await attachReviewState(bookings, req.user.id);
 
     res.status(200).json({
       success: true,
-      count: bookings.length,
-      data: bookings
+      count: data.length,
+      data
     });
   } catch (error) {
     res.status(500).json({
@@ -374,6 +453,63 @@ exports.getMyBookings = async (req, res) => {
       message: 'Server error',
       error: error.message
     });
+  }
+};
+
+// @desc    Update planned destinations for a booking
+// @route   PATCH /api/bookings/:id/destinations
+// @access  Private (Tourist)
+exports.updateBookingDestinations = async (req, res) => {
+  try {
+    const { destinations } = req.body;
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.tourist.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    if (!['pending', 'negotiating', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trip stops can only be changed before the trip is completed or closed'
+      });
+    }
+
+    let normalizedIds;
+    try {
+      normalizedIds = await normalizeAvailableDestinationIds(destinations);
+    } catch (error) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    booking.destinations = normalizedIds;
+    await booking.save();
+    await booking.populate('guide', 'name email avatar rating pricePerDay');
+    await booking.populate('tourist', 'name email avatar country');
+    await booking.populate('destinations', 'name images location');
+
+    await createAndEmit(
+      booking.guide._id?.toString?.() || booking.guide.toString(),
+      'booking_itinerary_updated',
+      'Trip Stops Updated',
+      `${req.user.name} updated the planned stops for an upcoming trip`,
+      { bookingId: booking._id, destinations: normalizedIds }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Trip stops updated',
+      data: booking
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };
 
@@ -734,6 +870,7 @@ exports.respondToBooking = async (req, res) => {
 // @access  Private (Guide)
 exports.getGuideStats = async (req, res) => {
   try {
+    await ensureCommissionsForGuide(req.user.id);
     const guideObjectId = new mongoose.Types.ObjectId(req.user.id);
     const totalBookings = await Booking.countDocuments({ guide: req.user.id });
     const pendingBookings = await Booking.countDocuments({ guide: req.user.id, status: { $in: ['pending', 'negotiating'] } });

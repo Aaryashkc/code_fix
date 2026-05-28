@@ -4,7 +4,7 @@ import { useEffect, useState, memo } from 'react';
 import api from '@/lib/api';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, Star, CreditCard, Loader2, Banknote, LocateFixed } from 'lucide-react';
+import { Calendar, MapPin, Users, Star, CreditCard, Loader2, Banknote, LocateFixed, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,6 +65,13 @@ interface Booking {
   };
 }
 
+interface DestinationOption {
+  _id: string;
+  name: string;
+  category?: string;
+  region?: string;
+}
+
 interface BookingCardProps {
   booking: Booking;
   payingBookingId: string | null;
@@ -74,6 +81,7 @@ interface BookingCardProps {
   onSelectBooking: (booking: Booking) => void;
   onOpenCancelDialog: () => void;
   onOpenReviewDialog: () => void;
+  onOpenItineraryDialog: () => void;
 }
 
 type BookingStatusBadgeConfig = {
@@ -137,6 +145,7 @@ const BookingCard = memo(function BookingCard({
   onSelectBooking,
   onOpenCancelDialog,
   onOpenReviewDialog,
+  onOpenItineraryDialog,
 }: BookingCardProps) {
 
   return (
@@ -318,6 +327,19 @@ const BookingCard = memo(function BookingCard({
               </Button>
             )}
             {booking.status === 'confirmed' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onSelectBooking(booking);
+                  onOpenItineraryDialog();
+                }}
+              >
+                <MapPin className="mr-2 h-4 w-4" />
+                Edit Stops
+              </Button>
+            )}
+            {booking.status === 'confirmed' && (
               <Link href={`/user/active-trip?bookingId=${booking._id}`}>
                 <Button size="sm" variant="outline">
                   <LocateFixed className="mr-2 h-4 w-4" />
@@ -339,11 +361,14 @@ const BookingCard = memo(function BookingCard({
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [destinationOptions, setDestinationOptions] = useState<DestinationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [itineraryDialogOpen, setItineraryDialogOpen] = useState(false);
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedDestinationIds, setSelectedDestinationIds] = useState<string[]>([]);
   const [cancelReason, setCancelReason] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -351,6 +376,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     fetchBookings();
+    fetchDestinations();
   }, []);
 
   const fetchBookings = async () => {
@@ -362,6 +388,50 @@ export default function BookingsPage() {
       toast.error('Failed to load bookings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDestinations = async () => {
+    try {
+      const response = await api.get('/destinations?limit=50&sort=name');
+      setDestinationOptions(response.data.data || []);
+    } catch {
+      setDestinationOptions([]);
+    }
+  };
+
+  const openItineraryDialog = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setSelectedDestinationIds((booking.destinations || []).map((destination) => destination._id));
+    setItineraryDialogOpen(true);
+  };
+
+  const toggleDestination = (destinationId: string) => {
+    setSelectedDestinationIds((current) =>
+      current.includes(destinationId)
+        ? current.filter((id) => id !== destinationId)
+        : [...current, destinationId]
+    );
+  };
+
+  const handleUpdateItinerary = async () => {
+    if (!selectedBooking) return;
+    if (selectedDestinationIds.length === 0) {
+      toast.error('Select at least one destination');
+      return;
+    }
+
+    try {
+      await api.patch(`/bookings/${selectedBooking._id}/destinations`, {
+        destinations: selectedDestinationIds,
+      });
+      toast.success('Trip stops updated');
+      setItineraryDialogOpen(false);
+      setSelectedBooking(null);
+      setSelectedDestinationIds([]);
+      fetchBookings();
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Failed to update trip stops'));
     }
   };
 
@@ -563,6 +633,7 @@ export default function BookingsPage() {
                   onSelectBooking={setSelectedBooking}
                   onOpenCancelDialog={() => setCancelDialogOpen(true)}
                   onOpenReviewDialog={() => setReviewDialogOpen(true)}
+                  onOpenItineraryDialog={() => openItineraryDialog(booking)}
                 />
               ))}
             </div>
@@ -589,6 +660,7 @@ export default function BookingsPage() {
                   onSelectBooking={setSelectedBooking}
                   onOpenCancelDialog={() => setCancelDialogOpen(true)}
                   onOpenReviewDialog={() => setReviewDialogOpen(true)}
+                  onOpenItineraryDialog={() => openItineraryDialog(booking)}
                 />
               ))}
             </div>
@@ -615,6 +687,7 @@ export default function BookingsPage() {
                   onSelectBooking={setSelectedBooking}
                   onOpenCancelDialog={() => setCancelDialogOpen(true)}
                   onOpenReviewDialog={() => setReviewDialogOpen(true)}
+                  onOpenItineraryDialog={() => openItineraryDialog(booking)}
                 />
               ))}
             </div>
@@ -643,6 +716,57 @@ export default function BookingsPage() {
             </Button>
             <Button variant="destructive" onClick={handleCancelBooking}>
               Cancel Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Itinerary Dialog */}
+      <Dialog open={itineraryDialogOpen} onOpenChange={setItineraryDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Update Trip Stops</DialogTitle>
+            <DialogDescription>
+              Choose the places you want your guide to include in this confirmed booking.
+            </DialogDescription>
+          </DialogHeader>
+          {destinationOptions.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              Destinations could not be loaded right now.
+            </div>
+          ) : (
+            <div className="grid max-h-80 grid-cols-1 gap-2 overflow-y-auto rounded-xl border p-2 sm:grid-cols-2">
+              {destinationOptions.map((destination) => {
+                const selected = selectedDestinationIds.includes(destination._id);
+                return (
+                  <button
+                    key={destination._id}
+                    type="button"
+                    onClick={() => toggleDestination(destination._id)}
+                    className={`flex min-h-14 items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      selected
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border hover:border-primary/40 hover:bg-muted/40'
+                    }`}
+                  >
+                    <CheckCircle className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? 'opacity-100' : 'opacity-25'}`} />
+                    <span className="min-w-0">
+                      <span className="block font-medium leading-tight">{destination.name}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {[destination.category, destination.region].filter(Boolean).join(' - ') || 'Destination'}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setItineraryDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateItinerary}>
+              Save Stops
             </Button>
           </DialogFooter>
         </DialogContent>

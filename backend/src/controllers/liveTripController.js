@@ -4,6 +4,44 @@ const { getRecentEventsForBookings } = require('../utils/liveTripEvents');
 const { listLiveTripSnapshots } = require('../sockets/liveTripState');
 
 const LIVE_ELIGIBLE_STATUSES = ['confirmed', 'completed'];
+const LIVE_LOCATION_FRESH_MS = 2 * 60 * 1000;
+
+function hasCoordinates(location) {
+  return Number.isFinite(Number(location?.lat)) && Number.isFinite(Number(location?.lng));
+}
+
+function getLatestLocationFromEvents(events = []) {
+  const event = events.find((entry) => (
+    entry.metadata?.locationSharingStopped ||
+    (entry.type === 'location_update' && hasCoordinates(entry.location))
+  ));
+  if (event?.metadata?.locationSharingStopped) return null;
+  if (!event) return null;
+
+  return {
+    lat: event.location.lat,
+    lng: event.location.lng,
+    accuracy: event.location.accuracy || null,
+    heading: event.location.heading || null,
+    speed: event.location.speed || null,
+    updatedAt: event.createdAt,
+    userId: event.actor || null,
+  };
+}
+
+function getLastSosFromEvents(events = []) {
+  const event = events.find((entry) => entry.type === 'sos_triggered');
+  if (!event) return null;
+
+  return {
+    message: event.message || 'SOS alert triggered',
+    triggeredAt: event.createdAt,
+    lat: event.location?.lat || null,
+    lng: event.location?.lng || null,
+    userId: event.actor || null,
+    triggeredBy: event.actorRole || null,
+  };
+}
 
 exports.getAccessibleLiveTrips = async (req, res) => {
   try {
@@ -39,6 +77,12 @@ exports.getAccessibleLiveTrips = async (req, res) => {
         destinations: booking.destinations,
       });
       const snapshot = snapshotsByBookingId.get(booking._id.toString());
+      const recentEvents = eventsByBookingId.get(booking._id.toString()) || [];
+      const latestLocation = snapshot?.latestLocation || getLatestLocationFromEvents(recentEvents);
+      const lastSOS = snapshot?.lastSOS || getLastSosFromEvents(recentEvents);
+      const recentLocationIsFresh = latestLocation
+        ? Date.now() - Date.parse(latestLocation.updatedAt) < LIVE_LOCATION_FRESH_MS
+        : false;
 
       return {
         bookingId: metadata.bookingId,
@@ -47,12 +91,12 @@ exports.getAccessibleLiveTrips = async (req, res) => {
         tourist: metadata.tourist,
         guide: metadata.guide,
         destinations: metadata.destinations,
-        latestLocation: snapshot?.latestLocation || null,
-        lastSOS: snapshot?.lastSOS || null,
+        latestLocation,
+        lastSOS,
         participantCount: snapshot?.participantCount || 0,
         connectedRoles: snapshot?.connectedRoles || [],
-        recentEvents: eventsByBookingId.get(booking._id.toString()) || [],
-        isLive: Boolean(snapshot?.isLive),
+        recentEvents,
+        isLive: Boolean(snapshot?.isLive || recentLocationIsFresh),
         updatedAt: snapshot?.updatedAt || booking.updatedAt,
       };
     });
