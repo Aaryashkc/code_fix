@@ -22,6 +22,24 @@ const bookingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Destination'
   }],
+  customDestinations: [{
+    name: {
+      type: String,
+      trim: true,
+      maxlength: 120
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+      coordinates: {
+        type: [Number]
+      },
+      address: String
+    }
+  }],
   startDate: {
     type: Date,
     required: true
@@ -90,6 +108,13 @@ const bookingSchema = new mongoose.Schema({
   },
   respondedAt: Date,
   completedAt: Date,
+  completionRequestedBy: {
+    type: String,
+    enum: ['tourist', 'guide']
+  },
+  completionRequestedAt: Date,
+  touristCompletedAt: Date,
+  guideCompletedAt: Date,
   cancellationReason: String,
   // Review from tourist (C-3: kept for backward compat read, but writes go to Review collection)
   review: {

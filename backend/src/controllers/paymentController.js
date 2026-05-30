@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { sendEmail } = require('../utils/email');
 const { paymentInvoiceTemplate } = require('../utils/emailTemplates');
 const { createAndEmit } = require('../utils/notificationService');
+const { createCommissionForBooking } = require('../utils/commissionLedger');
 
 if (!process.env.ESEWA_SECRET_KEY || !process.env.ESEWA_PRODUCT_CODE) {
   console.error('WARNING: eSewa payment credentials (ESEWA_SECRET_KEY, ESEWA_PRODUCT_CODE) are not set in environment variables');
@@ -429,6 +430,12 @@ exports.confirmCashPayment = async (req, res) => {
     booking.paymentDate = new Date();
     booking.paymentTransactionId = `CASH-${Date.now()}`;
     await booking.save();
+
+    try {
+      await createCommissionForBooking(booking);
+    } catch (commErr) {
+      console.error('Commission creation error (cash confirmation, non-fatal):', commErr.message);
+    }
 
     try {
       await createAndEmit(

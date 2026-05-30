@@ -36,6 +36,13 @@ interface Booking {
     name: string;
     images: string[];
   }>;
+  customDestinations?: Array<{
+    name: string;
+    location?: {
+      coordinates?: [number, number];
+      address?: string;
+    };
+  }>;
   startDate: string;
   endDate: string;
   numberOfDays: number;
@@ -49,6 +56,10 @@ interface Booking {
   paymentStatus?: string;
   paymentMethod?: string;
   paymentTransactionId?: string;
+  completionRequestedBy?: 'tourist' | 'guide';
+  completionRequestedAt?: string;
+  touristCompletedAt?: string;
+  guideCompletedAt?: string;
   specialRequirements?: string;
   expiresAt?: string;
   negotiationHistory?: Array<{
@@ -77,6 +88,7 @@ interface BookingCardProps {
   payingBookingId: string | null;
   onPayment: (bookingId: string) => void;
   onCashPayment: (bookingId: string) => void;
+  onComplete: (booking: Booking) => void;
   onFetchBookings: () => void;
   onSelectBooking: (booking: Booking) => void;
   onOpenCancelDialog: () => void;
@@ -141,12 +153,17 @@ const BookingCard = memo(function BookingCard({
   payingBookingId,
   onPayment,
   onCashPayment,
+  onComplete,
   onFetchBookings,
   onSelectBooking,
   onOpenCancelDialog,
   onOpenReviewDialog,
   onOpenItineraryDialog,
 }: BookingCardProps) {
+  const touristConfirmedCompletion = Boolean(booking.touristCompletedAt);
+  const guideConfirmedCompletion = Boolean(booking.guideCompletedAt);
+  const canActOnCompletion = booking.status === 'confirmed' && booking.paymentStatus === 'paid' && !touristConfirmedCompletion;
+  const waitingForGuideCompletion = booking.status === 'confirmed' && touristConfirmedCompletion && !guideConfirmedCompletion;
 
   return (
     <Card className="border border-border/60 shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -198,12 +215,17 @@ const BookingCard = memo(function BookingCard({
         </div>
 
         {/* Destinations */}
-        {booking.destinations && booking.destinations.length > 0 && (
+        {((booking.destinations && booking.destinations.length > 0) || (booking.customDestinations && booking.customDestinations.length > 0)) && (
           <div>
             <p className="text-sm font-medium mb-2">Destinations:</p>
             <div className="flex flex-wrap gap-2">
               {booking.destinations.map((dest) => (
                 <Badge key={dest._id} variant="secondary">
+                  {dest.name}
+                </Badge>
+              ))}
+              {booking.customDestinations?.map((dest) => (
+                <Badge key={dest.name} variant="outline">
                   {dest.name}
                 </Badge>
               ))}
@@ -216,6 +238,16 @@ const BookingCard = memo(function BookingCard({
           <div>
             <p className="text-sm font-medium mb-1">Special Requirements:</p>
             <p className="text-sm text-muted-foreground">{booking.specialRequirements}</p>
+          </div>
+        )}
+
+        {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (booking.completionRequestedBy || touristConfirmedCompletion || guideConfirmedCompletion) && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+            {guideConfirmedCompletion && !touristConfirmedCompletion
+              ? 'Guide has requested completion. Confirm it to finalize the booking and unlock review.'
+              : touristConfirmedCompletion && !guideConfirmedCompletion
+                ? 'You requested completion. Waiting for the guide to confirm before the trip is completed.'
+                : 'Completion is being confirmed by both parties.'}
           </div>
         )}
 
@@ -324,6 +356,21 @@ const BookingCard = memo(function BookingCard({
               >
                 <Star className="h-4 w-4 mr-2" />
                 Leave Review
+              </Button>
+            )}
+            {canActOnCompletion && (
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => onComplete(booking)}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {guideConfirmedCompletion ? 'Confirm Completion' : 'Request Completion'}
+              </Button>
+            )}
+            {waitingForGuideCompletion && (
+              <Button size="sm" variant="outline" disabled>
+                Waiting for Guide
               </Button>
             )}
             {booking.status === 'confirmed' && (
@@ -528,6 +575,16 @@ export default function BookingsPage() {
     }
   };
 
+  const handleCompleteBooking = async (booking: Booking) => {
+    try {
+      const response = await api.put(`/bookings/${booking._id}/complete`);
+      toast.success(response.data?.message ?? 'Completion confirmation saved!');
+      fetchBookings();
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Failed to confirm trip completion'));
+    }
+  };
+
   const upcomingBookings = bookings.filter(
     (b) => ['pending', 'negotiating', 'confirmed'].includes(b.status)
   );
@@ -629,6 +686,7 @@ export default function BookingsPage() {
                   payingBookingId={payingBookingId}
                   onPayment={handlePayment}
                   onCashPayment={handleCashPayment}
+                  onComplete={handleCompleteBooking}
                   onFetchBookings={fetchBookings}
                   onSelectBooking={setSelectedBooking}
                   onOpenCancelDialog={() => setCancelDialogOpen(true)}
@@ -656,6 +714,7 @@ export default function BookingsPage() {
                   payingBookingId={payingBookingId}
                   onPayment={handlePayment}
                   onCashPayment={handleCashPayment}
+                  onComplete={handleCompleteBooking}
                   onFetchBookings={fetchBookings}
                   onSelectBooking={setSelectedBooking}
                   onOpenCancelDialog={() => setCancelDialogOpen(true)}
@@ -683,6 +742,7 @@ export default function BookingsPage() {
                   payingBookingId={payingBookingId}
                   onPayment={handlePayment}
                   onCashPayment={handleCashPayment}
+                  onComplete={handleCompleteBooking}
                   onFetchBookings={fetchBookings}
                   onSelectBooking={setSelectedBooking}
                   onOpenCancelDialog={() => setCancelDialogOpen(true)}

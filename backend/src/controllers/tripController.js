@@ -251,8 +251,11 @@ exports.addSnackStop = async (req, res) => {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return res.status(400).json({ success: false, message: 'Valid lat/lng coordinates are required' });
     }
-    if (type && !['cafe', 'fast_food', 'restaurant'].includes(type)) {
-      return res.status(400).json({ success: false, message: 'Type must be cafe, fast_food, or restaurant' });
+    if (type && !['cafe', 'fast_food', 'restaurant', 'hotel', 'guest_house', 'hostel'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Type must be cafe, fast_food, restaurant, hotel, guest_house, or hostel'
+      });
     }
 
     const trip = await Trip.findById(req.params.id);

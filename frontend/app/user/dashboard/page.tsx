@@ -276,7 +276,7 @@ export default function UserDashboard() {
             <Link href="/user/trips">
               <Button size="sm" variant="outline" className="gap-2">
                 <Route className="h-4 w-4" />
-                My Trips
+                Trip Planner
               </Button>
             </Link>
             <Button
@@ -497,7 +497,7 @@ export default function UserDashboard() {
               {
                 href: '/user/trips',
                 title: 'Plan food stops',
-                desc: 'Add cafes, quick bites, and restaurants along your trip route.',
+                desc: 'Build draft itineraries and save route pauses before booking.',
                 badge: null,
                 icon: Utensils,
               },

@@ -12,7 +12,7 @@ const tripSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
-    type: { type: String, enum: ['cafe', 'fast_food', 'restaurant'] },
+    type: { type: String, enum: ['cafe', 'fast_food', 'restaurant', 'hotel', 'guest_house', 'hostel'] },
     overpassId: Number,
     orderAlongRoute: { type: Number, default: 0 }
   }]

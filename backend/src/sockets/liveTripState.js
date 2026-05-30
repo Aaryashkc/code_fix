@@ -30,7 +30,10 @@ function mergeMetadata(target, metadata = {}) {
     target.guide = metadata.guide;
   }
   if (Array.isArray(metadata.destinations)) {
-    target.destinations = metadata.destinations;
+    target.destinations = [
+      ...metadata.destinations,
+      ...(Array.isArray(metadata.customDestinations) ? metadata.customDestinations : []),
+    ];
   }
 }
 

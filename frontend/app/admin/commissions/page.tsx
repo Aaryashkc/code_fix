@@ -305,7 +305,7 @@ export default function AdminCommissionsPage() {
           <CardContent>
             <p className="text-2xl font-bold text-indigo-600">{formatNPR(totals.platformCommission)}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Across {totals.commissionCount} completed bookings
+              Across {totals.commissionCount} paid bookings
             </p>
           </CardContent>
         </Card>
@@ -333,7 +333,7 @@ export default function AdminCommissionsPage() {
           <CardContent>
             <p className="text-2xl font-bold text-blue-600">{formatNPR(totals.totalBookingVolume)}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Gross completed transaction value
+              Gross paid transaction value
             </p>
           </CardContent>
         </Card>
@@ -497,7 +497,7 @@ export default function AdminCommissionsPage() {
                   <span className="absolute right-3 top-2.5 text-sm text-muted-foreground font-semibold">%</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Platform split percentage taken from completed booking prices by default.
+                  Platform split percentage taken from paid booking prices by default.
                 </p>
               </div>
 
@@ -596,7 +596,7 @@ export default function AdminCommissionsPage() {
                     <span className="absolute right-3 top-2.5 text-sm text-muted-foreground font-semibold">%</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Specific commission split applied only for this guide's completed bookings.
+                    Specific commission split applied only for this guide's paid bookings.
                   </p>
                 </div>
               )}

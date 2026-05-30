@@ -1,5 +1,6 @@
 const Destination = require('../models/Destination');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../middleware/upload');
+const { resolveLocationFromName } = require('../utils/nominatim');
 
 const PUBLIC_DESTINATION_FILTER = {
   published: true,
@@ -254,6 +255,11 @@ exports.getRecommendations = async (req, res) => {
 exports.createDestination = async (req, res) => {
   try {
     const destinationData = pickFields(req.body, CONTENT_FIELDS);
+    const lookupName = destinationData.location?.address || destinationData.name;
+    const resolvedLocation = await resolveLocationFromName(lookupName, destinationData.location);
+    if (resolvedLocation) {
+      destinationData.location = resolvedLocation;
+    }
 
     if (req.user.role === 'guide') {
       destinationData.addedBy = req.user.id;
@@ -299,6 +305,13 @@ exports.updateDestination = async (req, res) => {
       'verificationStatus',
       'rejectionReason'
     ]);
+    if (destinationData.location !== undefined) {
+      const lookupName = destinationData.location?.address || destinationData.name;
+      const resolvedLocation = await resolveLocationFromName(lookupName, destinationData.location);
+      if (resolvedLocation) {
+        destinationData.location = resolvedLocation;
+      }
+    }
 
     const destination = await Destination.findByIdAndUpdate(
       req.params.id,

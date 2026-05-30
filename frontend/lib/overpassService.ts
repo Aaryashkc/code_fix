@@ -14,7 +14,7 @@ interface Amenity {
   name: string;
   lat: number;
   lon: number;
-  type: 'cafe' | 'fast_food' | 'restaurant';
+  type: 'cafe' | 'fast_food' | 'restaurant' | 'hotel' | 'guest_house' | 'hostel';
   tags: Record<string, string>;
 }
 
@@ -78,7 +78,7 @@ function mapOverpassElementsToAmenities(elements: OverpassElement[]): Amenity[] 
         name: element.tags.name,
         lat: eLat,
         lon: eLon,
-        type: element.tags.amenity as 'cafe' | 'fast_food' | 'restaurant',
+        type: (element.tags.amenity || element.tags.tourism) as Amenity['type'],
         tags: element.tags,
       };
     })
@@ -93,8 +93,8 @@ function isCacheValid(entry: CacheEntry): boolean {
 }
 
 /**
- * Fetch nearby coffee, tea, snacks using Overpass API
- * Searches for: cafes, fast food, restaurants within specified radius
+ * Fetch nearby food and lodging using Overpass API.
+ * Searches for: cafes, fast food, restaurants, hotels, guest houses, and hostels.
  *
  * @param lat - Latitude
  * @param lon - Longitude
@@ -120,7 +120,7 @@ export async function fetchNearbyAmenities(
     return existing as Promise<Amenity[]>;
   }
 
-  // Overpass API query for cafes, fast food, and restaurants
+  // Overpass API query for cafes, fast food, restaurants, hotels, guest houses, and hostels.
   const query = `
     [out:json][timeout:25];
     (
@@ -130,6 +130,12 @@ export async function fetchNearbyAmenities(
       way["amenity"="cafe"](around:${radius},${lat},${lon});
       way["amenity"="fast_food"](around:${radius},${lat},${lon});
       way["amenity"="restaurant"](around:${radius},${lat},${lon});
+      node["tourism"="hotel"](around:${radius},${lat},${lon});
+      node["tourism"="guest_house"](around:${radius},${lat},${lon});
+      node["tourism"="hostel"](around:${radius},${lat},${lon});
+      way["tourism"="hotel"](around:${radius},${lat},${lon});
+      way["tourism"="guest_house"](around:${radius},${lat},${lon});
+      way["tourism"="hostel"](around:${radius},${lat},${lon});
     );
     out center;
   `;
@@ -187,6 +193,12 @@ export async function fetchSnacksAlongRoute(
     `way["amenity"="cafe"](around:${radiusPerPoint},${lat},${lon});`,
     `way["amenity"="fast_food"](around:${radiusPerPoint},${lat},${lon});`,
     `way["amenity"="restaurant"](around:${radiusPerPoint},${lat},${lon});`,
+    `node["tourism"="hotel"](around:${radiusPerPoint},${lat},${lon});`,
+    `node["tourism"="guest_house"](around:${radiusPerPoint},${lat},${lon});`,
+    `node["tourism"="hostel"](around:${radiusPerPoint},${lat},${lon});`,
+    `way["tourism"="hotel"](around:${radiusPerPoint},${lat},${lon});`,
+    `way["tourism"="guest_house"](around:${radiusPerPoint},${lat},${lon});`,
+    `way["tourism"="hostel"](around:${radiusPerPoint},${lat},${lon});`,
   ]);
 
   const query = `

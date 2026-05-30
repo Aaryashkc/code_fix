@@ -43,7 +43,7 @@ router.patch('/:id/destinations', protect, authorize('tourist'), updateBookingDe
 router.put('/:id/accept', protect, authorize('guide'), acceptBooking);
 router.put('/:id/decline', protect, authorize('guide'), declineBooking);
 router.patch('/:id/respond', protect, authorize('guide'), respondToBooking);
-router.put('/:id/complete', protect, authorize('guide'), completeBooking);
+router.put('/:id/complete', protect, completeBooking);
 
 // InDrive-style negotiation routes
 router.put('/:id/counter-offer', protect, authorize('guide'), counterOffer);

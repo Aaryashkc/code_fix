@@ -7,7 +7,6 @@ import api from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
 import {
   buildLiveTripMarkers,
-  buildLiveTripRoutePath,
   getLiveTripEventLabel,
   prependLiveTripEvent,
   type LiveTripEvent,
@@ -18,8 +17,18 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { MapPinned, ShieldAlert, Radio } from 'lucide-react';
+import { Bed, MapPinned, ShieldAlert, Radio, Utensils } from 'lucide-react';
 import type { ExploreMarker } from '@/components/map/UserExploreMap';
+import { fetchSnacksAlongRoute, type RouteSnackStop } from '@/lib/overpassService';
+import { fetchRoadRoute } from '@/lib/routeService';
+import {
+  buildLiveTripWaypoints,
+  formatNearbyDistance,
+  formatRouteDistance,
+  getRouteStopKey,
+  getRouteStopLabel,
+  isLodgingStop,
+} from '@/lib/liveTripRoute';
 
 const UserExploreMap = dynamic(() => import('@/components/map/UserExploreMap'), { ssr: false });
 
@@ -30,6 +39,11 @@ export default function GuideLiveTripsPage() {
   const [sessions, setSessions] = useState<LiveTripSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBookingId, setSelectedBookingId] = useState('');
+  const [roadRoutePath, setRoadRoutePath] = useState<[number, number][]>([]);
+  const [roadRouteDistance, setRoadRouteDistance] = useState<number | null>(null);
+  const [routeStops, setRouteStops] = useState<RouteSnackStop[]>([]);
+  const [routeStopsLoading, setRouteStopsLoading] = useState(false);
+  const [selectedRouteStopKey, setSelectedRouteStopKey] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -137,10 +151,53 @@ export default function GuideLiveTripsPage() {
     [selectedSession]
   );
 
-  const routePath = useMemo(
-    () => buildLiveTripRoutePath(selectedSession?.destinations || []),
-    [selectedSession]
-  );
+  const routeWaypoints = useMemo(() => buildLiveTripWaypoints(selectedSession), [selectedSession]);
+  const routePath = roadRoutePath.length > 1 ? roadRoutePath : routeWaypoints;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRouteDetails() {
+      setRoadRoutePath([]);
+      setRoadRouteDistance(null);
+      setRouteStops([]);
+      setSelectedRouteStopKey(null);
+
+      if (routeWaypoints.length < 2) {
+        setRouteStopsLoading(false);
+        return;
+      }
+
+      setRouteStopsLoading(true);
+      try {
+        const roadRoute = await fetchRoadRoute(routeWaypoints);
+        const path = roadRoute?.coordinates?.length ? roadRoute.coordinates : routeWaypoints;
+        if (cancelled) return;
+
+        setRoadRoutePath(path);
+        setRoadRouteDistance(roadRoute?.distanceMeters || null);
+        const stops = await fetchSnacksAlongRoute(path, 800);
+        if (!cancelled) {
+          setRouteStops(stops);
+          setSelectedRouteStopKey(stops[0] ? getRouteStopKey(stops[0]) : null);
+        }
+      } catch (error) {
+        console.error('Failed to load guide live route details:', error);
+        if (!cancelled) {
+          setRoadRoutePath(routeWaypoints);
+          setRoadRouteDistance(null);
+          setRouteStops([]);
+        }
+      } finally {
+        if (!cancelled) setRouteStopsLoading(false);
+      }
+    }
+
+    loadRouteDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [routeWaypoints]);
 
   if (loading) {
     return (
@@ -235,9 +292,10 @@ export default function GuideLiveTripsPage() {
           <Card className="border border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPinned className="h-5 w-5 text-primary" />
-                Live Traveler Map
-              </CardTitle>
+                  <MapPinned className="h-5 w-5 text-primary" />
+                  Live Traveler Map
+                  <Badge variant="outline" className="ml-auto">{formatRouteDistance(roadRouteDistance)}</Badge>
+                </CardTitle>
             </CardHeader>
             <CardContent>
               {selectedSession ? (
@@ -253,6 +311,9 @@ export default function GuideLiveTripsPage() {
                     }
                     userLocationStatus={selectedSession.lastSOS ? 'sos' : 'default'}
                     routePath={routePath}
+                    routeSnackStops={routeStops}
+                    selectedRouteSnackKey={selectedRouteStopKey}
+                    onSelectRouteSnack={setSelectedRouteStopKey}
                   />
                 </div>
               ) : (
@@ -311,6 +372,53 @@ export default function GuideLiveTripsPage() {
                     <p className="text-red-700">
                       {selectedSession.lastSOS.message} at {new Date(selectedSession.lastSOS.triggeredAt).toLocaleTimeString()}
                     </p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card className="border border-border/60 shadow-sm lg:col-span-3">
+                <CardHeader>
+                  <CardTitle className="text-base">Hotels & Restaurants Near Route</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {routeStopsLoading ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
+                      Drawing the road route and checking nearby places...
+                    </div>
+                  ) : routePath.length < 2 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
+                      The route appears after the traveler shares location or the booking has two mapped stops.
+                    </div>
+                  ) : routeStops.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
+                      No restaurants or hotels were found near this route yet.
+                    </div>
+                  ) : (
+                    routeStops.slice(0, 9).map((stop) => {
+                      const stopKey = getRouteStopKey(stop);
+                      const selected = stopKey === selectedRouteStopKey;
+                      const lodging = isLodgingStop(stop.type);
+
+                      return (
+                        <button
+                          key={stopKey}
+                          type="button"
+                          onClick={() => setSelectedRouteStopKey(stopKey)}
+                          className={`rounded-lg border p-3 text-left transition ${
+                            selected ? 'border-primary bg-primary/5' : 'hover:border-primary/40 hover:bg-muted/40'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            {lodging ? <Bed className="mt-0.5 h-4 w-4 text-blue-600" /> : <Utensils className="mt-0.5 h-4 w-4 text-orange-600" />}
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{stop.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {getRouteStopLabel(stop.type)} - {formatNearbyDistance(stop.distanceFromRoute)}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
                   )}
                 </CardContent>
               </Card>

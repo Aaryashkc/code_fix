@@ -176,7 +176,7 @@ export default function GuideEarningsPage() {
                   {meta.hasActivePayout ? 'Payout request is being processed' : `${formatNPR(meta.pendingBalance)} available for payout`}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  From {meta.pendingCommissionCount} completed {meta.pendingCommissionCount === 1 ? 'trip' : 'trips'}
+                  From {meta.pendingCommissionCount} paid {meta.pendingCommissionCount === 1 ? 'trip' : 'trips'}
                   {meta.hasActivePayout && ' · Admin will process shortly'}
                 </p>
               </div>
@@ -205,7 +205,7 @@ export default function GuideEarningsPage() {
         <CardContent>
           {commissions.length === 0 ? (
             <div className="rounded-xl border border-dashed py-12 text-center text-muted-foreground text-sm">
-              No commission records yet. Complete your first trip to see earnings here.
+              No commission records yet. Confirm payment for your first trip to see earnings here.
             </div>
           ) : (
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
@@ -272,7 +272,7 @@ export default function GuideEarningsPage() {
         <AlertCircle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <div className="text-muted-foreground">
           <p className="font-medium text-foreground mb-0.5">How payouts work</p>
-          <p>Once you complete a trip and payment is confirmed, your net earning (after the platform commission) is recorded here as "Pending". Click <strong>Request Payout</strong> to notify admin. Payouts are processed within 3–5 business days.</p>
+          <p>Once payment is confirmed, your net earning (after the platform commission) is recorded here as "Pending". Click <strong>Request Payout</strong> to notify admin. Payouts are processed within 3–5 business days.</p>
         </div>
       </div>
 
@@ -284,7 +284,7 @@ export default function GuideEarningsPage() {
             <DialogDescription>
               You are requesting a payout of{' '}
               <strong>{formatNPR(meta?.pendingBalance ?? 0)}</strong> from{' '}
-              {meta?.pendingCommissionCount} completed trip{meta?.pendingCommissionCount !== 1 ? 's' : ''}.
+              {meta?.pendingCommissionCount} paid trip{meta?.pendingCommissionCount !== 1 ? 's' : ''}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

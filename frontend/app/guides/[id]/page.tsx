@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import LiveRequestCard from '@/components/booking/live-request-card';
 import NegotiationPanel from '@/components/booking/negotiation-panel';
 import { ProfileSkeleton } from '@/components/ui/skeleton-cards';
+import { geocodePlaceName, type GeocodedPlace } from '@/lib/geocoding';
 
 interface Guide {
   _id: string;
@@ -108,6 +109,7 @@ export default function GuideProfilePage() {
     'details'
   );
   const [submitting, setSubmitting] = useState(false);
+  const [geocodingDestination, setGeocodingDestination] = useState(false);
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null);
 
   const [bookingData, setBookingData] = useState({
@@ -116,6 +118,8 @@ export default function GuideProfilePage() {
     groupSize: 1,
     packageType: 'Full Day Adventure',
     selectedDestinationIds: [] as string[],
+    customDestinationInput: '',
+    customDestinations: [] as GeocodedPlace[],
     specialRequirements: '',
     message: '',
   });
@@ -273,13 +277,50 @@ export default function GuideProfilePage() {
     });
   };
 
+  const addCustomDestination = async () => {
+    const destination = bookingData.customDestinationInput.trim().replace(/\s+/g, ' ');
+    if (!destination) return;
+
+    if (bookingData.customDestinations.some((current) => current.name.toLowerCase() === destination.toLowerCase())) {
+      toast.error('That destination is already added');
+      return;
+    }
+
+    setGeocodingDestination(true);
+    try {
+      const resolved = await geocodePlaceName(destination);
+      if (!resolved) {
+        toast.error('Nominatim could not find that place. Try a more specific name.');
+        return;
+      }
+
+      setBookingData((current) => ({
+        ...current,
+        customDestinationInput: '',
+        customDestinations: [...current.customDestinations, resolved],
+      }));
+      toast.success(`Added ${resolved.name} (${resolved.location.coordinates[1].toFixed(4)}, ${resolved.location.coordinates[0].toFixed(4)})`);
+    } catch {
+      toast.error('Could not look up that place right now');
+    } finally {
+      setGeocodingDestination(false);
+    }
+  };
+
+  const removeCustomDestination = (destination: string) => {
+    setBookingData((current) => ({
+      ...current,
+      customDestinations: current.customDestinations.filter((currentDestination) => currentDestination.name !== destination),
+    }));
+  };
+
   const handleSendRequest = async () => {
     if (!bookingData.startDate || !bookingData.endDate) {
       toast.error('Please select dates');
       return;
     }
-    if (bookingData.selectedDestinationIds.length === 0) {
-      toast.error('Please select at least one place to visit');
+    if (bookingData.selectedDestinationIds.length === 0 && bookingData.customDestinations.length === 0) {
+      toast.error('Please select or enter at least one place to visit');
       return;
     }
     if (offeredPrice <= 0) {
@@ -294,6 +335,7 @@ export default function GuideProfilePage() {
         startDate: bookingData.startDate,
         endDate: bookingData.endDate,
         destinations: bookingData.selectedDestinationIds,
+        customDestinations: bookingData.customDestinations,
         numberOfDays: calculateDays(),
         packageType: bookingData.packageType,
         groupSize: bookingData.groupSize,
@@ -680,6 +722,50 @@ export default function GuideProfilePage() {
                                   Approved destinations could not be loaded right now.
                                 </div>
                               )}
+                              <div className="rounded-xl border p-3">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  Add your own destination
+                                </label>
+                                <div className="mt-2 flex gap-2">
+                                  <Input
+                                    value={bookingData.customDestinationInput}
+                                    onChange={(e) => setBookingData({ ...bookingData, customDestinationInput: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        void addCustomDestination();
+                                      }
+                                    }}
+                                    placeholder="Type where you want to go"
+                                    maxLength={120}
+                                  />
+                                  <Button type="button" variant="outline" onClick={() => void addCustomDestination()} disabled={geocodingDestination}>
+                                    {geocodingDestination ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                                  </Button>
+                                </div>
+                                {bookingData.customDestinations.length > 0 && (
+                                  <div className="mt-3 space-y-2">
+                                    {bookingData.customDestinations.map((destination) => (
+                                      <div key={destination.name} className="flex items-start justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+                                        <div className="min-w-0">
+                                          <p className="truncate font-medium">{destination.name}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {destination.location.coordinates[1].toFixed(4)}, {destination.location.coordinates[0].toFixed(4)}
+                                          </p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => removeCustomDestination(destination.name)}
+                                          className="rounded-full p-1 hover:text-destructive"
+                                          aria-label={`Remove ${destination.name}`}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             <div className="space-y-2">
@@ -731,8 +817,8 @@ export default function GuideProfilePage() {
                                   toast.error('Please select both start and end dates');
                                   return;
                                 }
-                                if (bookingData.selectedDestinationIds.length === 0) {
-                                  toast.error('Please select at least one place to visit');
+                                if (bookingData.selectedDestinationIds.length === 0 && bookingData.customDestinations.length === 0) {
+                                  toast.error('Please select or enter at least one place to visit');
                                   return;
                                 }
                                 setBookingStep('price');

@@ -3,16 +3,17 @@ const User = require('../models/User');
 const Commission = require('../models/Commission');
 const Review = require('../models/Review');
 const Destination = require('../models/Destination');
-const PlatformSettings = require('../models/PlatformSettings');
 const mongoose = require('mongoose');
 const { createAndEmit } = require('../utils/notificationService');
-const { calculateCommission, resolveCommissionRate } = require('../utils/commissionUtils');
 const { ensureCommissionsForGuide } = require('../utils/commissionBackfill');
+const { createCommissionForBooking } = require('../utils/commissionLedger');
+const { resolveLocationFromName } = require('../utils/nominatim');
 
 const BOOKING_EXPIRY_MINUTES = 30;
 
-async function normalizeAvailableDestinationIds(destinations) {
+async function normalizeAvailableDestinationIds(destinations, { requireOne = true } = {}) {
   if (!Array.isArray(destinations)) {
+    if (!requireOne) return [];
     const error = new Error('Select at least one destination');
     error.statusCode = 400;
     throw error;
@@ -20,6 +21,7 @@ async function normalizeAvailableDestinationIds(destinations) {
 
   const normalizedIds = [...new Set(destinations.map((id) => String(id)).filter(Boolean))];
   if (normalizedIds.length === 0) {
+    if (!requireOne) return [];
     const error = new Error('Select at least one destination');
     error.statusCode = 400;
     throw error;
@@ -48,6 +50,38 @@ async function normalizeAvailableDestinationIds(destinations) {
   }
 
   return normalizedIds;
+}
+
+async function normalizeCustomDestinations(customDestinations) {
+  if (!Array.isArray(customDestinations)) return [];
+
+  const normalized = customDestinations
+    .map((destination) => {
+      const name = typeof destination === 'string' ? destination : destination?.name;
+      const location = typeof destination === 'string' ? null : destination?.location;
+      return {
+        name: String(name || '').trim().replace(/\s+/g, ' '),
+        location,
+      };
+    })
+    .filter((destination) => destination.name)
+    .filter((destination, index, all) => (
+      all.findIndex((candidate) => candidate.name.toLowerCase() === destination.name.toLowerCase()) === index
+    ))
+    .slice(0, 10);
+
+  const resolved = [];
+
+  for (const destination of normalized) {
+    const name = destination.name.slice(0, 120);
+    const location = await resolveLocationFromName(name, destination.location);
+    resolved.push({
+      name,
+      ...(location ? { location } : {}),
+    });
+  }
+
+  return resolved;
 }
 
 async function attachReviewState(bookings, reviewerId) {
@@ -84,6 +118,7 @@ exports.createBooking = async (req, res) => {
     const {
       guideId,
       destinations,
+      customDestinations,
       startDate,
       endDate,
       packageType,
@@ -144,11 +179,19 @@ exports.createBooking = async (req, res) => {
 
     let destinationIds;
     try {
-      destinationIds = await normalizeAvailableDestinationIds(destinations);
+      destinationIds = await normalizeAvailableDestinationIds(destinations, { requireOne: false });
     } catch (error) {
       return res.status(error.statusCode || 400).json({
         success: false,
         message: error.message
+      });
+    }
+
+    const normalizedCustomDestinations = await normalizeCustomDestinations(customDestinations);
+    if (destinationIds.length === 0 && normalizedCustomDestinations.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Select or enter at least one destination'
       });
     }
 
@@ -160,6 +203,7 @@ exports.createBooking = async (req, res) => {
       tourist: req.user.id,
       guide: guideId,
       destinations: destinationIds,
+      customDestinations: normalizedCustomDestinations,
       startDate,
       endDate,
       numberOfDays,
@@ -181,6 +225,7 @@ exports.createBooking = async (req, res) => {
     // Populate guide and tourist details
     await booking.populate('guide', 'name email avatar pricePerDay');
     await booking.populate('tourist', 'name email avatar country');
+    await booking.populate('destinations', 'name images location category');
 
     // Notify guide of new booking request
     await createAndEmit(
@@ -731,9 +776,9 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// @desc    Complete booking
+// @desc    Request or confirm booking completion
 // @route   PUT /api/bookings/:id/complete
-// @access  Private (Guide)
+// @access  Private (Tourist or Guide participant)
 exports.completeBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -742,8 +787,19 @@ exports.completeBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    if (booking.guide.toString() !== req.user.id) {
+    const isGuide = booking.guide.toString() === req.user.id;
+    const isTourist = booking.tourist.toString() === req.user.id;
+
+    if (!isGuide && !isTourist) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'This booking is already completed' });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ success: false, message: 'Only confirmed bookings can be completed' });
     }
 
     // SECURITY: Prevent completing a booking where cash payment hasn't been confirmed yet.
@@ -759,38 +815,58 @@ exports.completeBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: msg });
     }
 
+    const now = new Date();
+    const actorRole = isGuide ? 'guide' : 'tourist';
+    const otherUserId = isGuide ? booking.tourist.toString() : booking.guide.toString();
+
+    if (isGuide) {
+      booking.guideCompletedAt = booking.guideCompletedAt || now;
+    } else {
+      booking.touristCompletedAt = booking.touristCompletedAt || now;
+    }
+
+    if (!booking.completionRequestedBy) {
+      booking.completionRequestedBy = actorRole;
+      booking.completionRequestedAt = now;
+    }
+
+    const hasBothConfirmations = Boolean(booking.guideCompletedAt && booking.touristCompletedAt);
+    if (!hasBothConfirmations) {
+      await booking.save();
+
+      await createAndEmit(
+        otherUserId,
+        'booking_completed',
+        'Confirm Trip Completion',
+        `${req.user.name} marked this trip as completed. Please confirm completion to finalize the booking.`,
+        { bookingId: booking._id, completionRequestedBy: actorRole }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Completion confirmation requested. The booking will complete after the other party confirms.',
+        data: booking
+      });
+    }
+
     booking.status = 'completed';
-    booking.completedAt = Date.now();
+    booking.completedAt = now;
     await booking.save();
 
-    await User.findByIdAndUpdate(req.user.id, { $inc: { totalTrips: 1 } });
+    await User.findByIdAndUpdate(booking.guide, { $inc: { totalTrips: 1 } });
 
     // Auto-create commission record on completion
     try {
-      const existingCommission = await Commission.findOne({ booking: booking._id });
-      if (!existingCommission) {
-        const settings = await PlatformSettings.getSettings();
-        const guide = await User.findById(booking.guide).select('commissionRate');
-        const rate = resolveCommissionRate(guide?.commissionRate, settings.defaultCommissionRate);
-        const { commissionAmount, guideEarning } = calculateCommission(booking.totalPrice, rate);
-        await Commission.create({
-          booking: booking._id,
-          guide: booking.guide,
-          bookingAmount: booking.totalPrice,
-          commissionRate: rate,
-          commissionAmount,
-          guideEarning
-        });
-      }
+      await createCommissionForBooking(booking);
     } catch (commErr) {
       console.error('Commission creation error (non-fatal):', commErr.message);
     }
 
     await createAndEmit(
-      booking.tourist.toString(),
+      otherUserId,
       'booking_completed',
       'Trip Completed',
-      `Your trip with ${req.user.name} has been marked as completed. Leave a review!`,
+      'Both parties confirmed trip completion. The booking is now completed.',
       { bookingId: booking._id }
     );
 

@@ -398,7 +398,7 @@ export default function AdminPayoutsPage() {
             <CardHeader>
               <CardTitle className="text-lg font-bold">Unpaid Commissions Queue</CardTitle>
               <CardDescription>
-                Guides with completed trips and pending balances. Review the balances and disburse payouts in batches.
+                Guides with paid trips and pending balances. Review the balances and disburse payouts in batches.
               </CardDescription>
             </CardHeader>
             <CardContent>

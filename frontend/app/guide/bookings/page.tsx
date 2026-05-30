@@ -38,10 +38,15 @@ interface Booking {
   status:     string;
   paymentStatus?: string;
   paymentMethod?: string;
+  completionRequestedBy?: 'tourist' | 'guide';
+  completionRequestedAt?: string;
+  touristCompletedAt?: string;
+  guideCompletedAt?: string;
   specialRequirements?: string;
   expiresAt?: string;
   negotiationHistory: NegotiationEntry[];
   destinations: { name: string }[];
+  customDestinations?: { name: string }[];
   createdAt: string;
   guide?: { pricePerDay?: number };
 }
@@ -130,8 +135,8 @@ export default function GuideBookingsPage() {
     if (!completeBooking) return;
     setCompleting(true);
     try {
-      await api.put(`/bookings/${completeBooking._id}/complete`);
-      toast.success('Trip marked as completed!');
+      const response = await api.put(`/bookings/${completeBooking._id}/complete`);
+      toast.success(response.data?.message ?? 'Completion confirmation saved!');
       setCompleteDialog(false);
       fetchBookings();
     } catch (e: any) { toast.error(e.response?.data?.message ?? 'Failed to complete trip'); }
@@ -271,9 +276,11 @@ export default function GuideBookingsPage() {
       <Dialog open={completeDialog} onOpenChange={setCompleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Mark Trip as Completed</DialogTitle>
+            <DialogTitle>{completeBooking?.touristCompletedAt ? 'Confirm Trip Completion' : 'Request Trip Completion'}</DialogTitle>
             <DialogDescription>
-              Confirm that you have completed the trip for {completeBooking?.tourist?.name}. This will finalise payment and generate a commission record.
+              {completeBooking?.touristCompletedAt && !completeBooking?.guideCompletedAt
+                ? `Confirm ${completeBooking?.tourist?.name}'s completion request. This will finalise payment and generate a commission record.`
+                : `Confirm that you completed the trip for ${completeBooking?.tourist?.name}. The traveller must also confirm before earnings are recorded.`}
             </DialogDescription>
           </DialogHeader>
           {completeBooking && (
@@ -286,7 +293,7 @@ export default function GuideBookingsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCompleteDialog(false)}>Cancel</Button>
             <Button onClick={completeTrip} disabled={completing}>
-              {completing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Completing…</> : <><CheckCircle className="h-4 w-4 mr-2" />Complete Trip</>}
+              {completing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : <><CheckCircle className="h-4 w-4 mr-2" />{completeBooking?.touristCompletedAt ? 'Confirm Completion' : 'Request Completion'}</>}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -341,6 +348,10 @@ function BookingCard({
   const isPending = ['pending','negotiating'].includes(b.status);
   const StatusIcon = STATUS_ICONS[b.status] ?? Clock;
   const [quickOpen, setQuickOpen] = useState(false);
+  const guideConfirmedCompletion = Boolean(b.guideCompletedAt);
+  const touristConfirmedCompletion = Boolean(b.touristCompletedAt);
+  const canActOnCompletion = b.status === 'confirmed' && b.paymentStatus === 'paid' && !guideConfirmedCompletion;
+  const waitingForTouristCompletion = b.status === 'confirmed' && guideConfirmedCompletion && !touristConfirmedCompletion;
 
   return (
     <Card className={`transition-shadow ${isPending ? 'border-primary/30 shadow-md' : 'border-border/60 shadow-sm'}`}>
@@ -381,10 +392,11 @@ function BookingCard({
           </div>
         </div>
 
-        {b.destinations.length > 0 && (
+        {(b.destinations.length > 0 || (b.customDestinations?.length || 0) > 0) && (
           <div className="flex items-center gap-2 flex-wrap">
             <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
             {b.destinations.map((d, i) => <Badge key={i} variant="secondary" className="text-xs">{d.name}</Badge>)}
+            {b.customDestinations?.map((d) => <Badge key={d.name} variant="outline" className="text-xs">{d.name}</Badge>)}
           </div>
         )}
 
@@ -512,6 +524,16 @@ function BookingCard({
           </div>
         )}
 
+        {b.status === 'confirmed' && b.paymentStatus === 'paid' && (b.completionRequestedBy || guideConfirmedCompletion || touristConfirmedCompletion) && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+            {touristConfirmedCompletion && !guideConfirmedCompletion
+              ? 'Traveller has requested completion. Confirm it to finalize the booking and record earnings.'
+              : guideConfirmedCompletion && !touristConfirmedCompletion
+                ? 'You requested completion. Waiting for the traveller to confirm before earnings are recorded.'
+                : 'Completion is being confirmed by both parties.'}
+          </div>
+        )}
+
         {/* ── completed commission hint ── */}
         {b.status === 'completed' && (
           <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-700">
@@ -560,10 +582,15 @@ function BookingCard({
 
             {b.status === 'confirmed' && (
               <>
-                {b.paymentStatus === 'paid' && (
+                {canActOnCompletion && (
                   <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     onClick={onComplete}>
-                    <CheckCircle className="h-4 w-4 mr-1.5" />Complete Trip
+                    <CheckCircle className="h-4 w-4 mr-1.5" />{touristConfirmedCompletion ? 'Confirm Completion' : 'Request Completion'}
+                  </Button>
+                )}
+                {waitingForTouristCompletion && (
+                  <Button size="sm" variant="outline" disabled>
+                    Waiting for Traveller
                   </Button>
                 )}
                 <Link href={`/guide/live?bookingId=${b._id}`}>

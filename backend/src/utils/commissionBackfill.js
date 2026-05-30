@@ -3,13 +3,12 @@ const Commission = require('../models/Commission');
 const PlatformSettings = require('../models/PlatformSettings');
 const User = require('../models/User');
 const { calculateCommission, resolveCommissionRate } = require('./commissionUtils');
+const { commissionEligibleBookingFilter } = require('./commissionLedger');
 
 async function ensureCommissionsForGuide(guideId) {
-  const completedBookings = await Booking.find({
-    guide: guideId,
-    status: 'completed',
-    paymentStatus: 'paid'
-  }).select('_id guide totalPrice');
+  const completedBookings = await Booking.find(
+    commissionEligibleBookingFilter({ guide: guideId })
+  ).select('_id guide totalPrice');
 
   if (completedBookings.length === 0) {
     return;
@@ -55,11 +54,9 @@ async function ensureCommissionsForGuide(guideId) {
 }
 
 async function ensureCommissionsForCompletedBookings(filter = {}) {
-  const completedBookings = await Booking.find({
-    ...filter,
-    status: 'completed',
-    paymentStatus: 'paid'
-  }).select('_id guide totalPrice');
+  const completedBookings = await Booking.find(
+    commissionEligibleBookingFilter(filter)
+  ).select('_id guide totalPrice');
 
   if (completedBookings.length === 0) {
     return;

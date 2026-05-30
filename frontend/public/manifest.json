@@ -61,9 +61,9 @@
       "icons": [{ "src": "/icon-map.png", "sizes": "192x192" }]
     },
     {
-      "name": "My Trips",
-      "short_name": "Trips",
-      "description": "View your saved trips",
+      "name": "Trip Planner",
+      "short_name": "Planner",
+      "description": "Build and view your saved trip plans",
       "url": "/user/trips",
       "icons": [{ "src": "/icon-trips.png", "sizes": "192x192" }]
     },

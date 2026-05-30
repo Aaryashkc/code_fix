@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import api, { cachedGet } from '@/lib/api';
 import { fetchSnacksAlongRoute, type RouteSnackStop } from '@/lib/overpassService';
+import { fetchRoadRoute } from '@/lib/routeService';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,7 +64,17 @@ interface SavedTrip {
   _id: string;
   name: string;
   places: SavedTripPlace[];
+  snackStops?: SavedTripSnackStop[];
   createdAt: string;
+}
+
+interface SavedTripSnackStop {
+  name: string;
+  lat: number;
+  lng: number;
+  type: RouteSnackStop['type'];
+  overpassId?: number | null;
+  orderAlongRoute: number;
 }
 
 interface PlannerStop {
@@ -129,17 +140,41 @@ const CATEGORY_TO_SPECIALIZATION: Record<string, string> = {
 
 const getRouteSnackKey = (snack: RouteSnackStop) => `${snack.type}-${snack.id}`;
 
+const getSavedRouteSnackKey = (snack: SavedTripSnackStop) =>
+  snack.overpassId ? `${snack.type}-${snack.overpassId}` : `${snack.type}-${snack.name}-${snack.lat}-${snack.lng}`;
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+  ) {
+    return (error as { response?: { data?: { message?: string } } }).response?.data?.message || fallback;
+  }
+  return fallback;
+};
+
 const getFoodStopTypeLabel = (type: RouteSnackStop['type']) => {
   if (type === 'cafe') return 'Cafe';
   if (type === 'fast_food') return 'Quick Bite';
+  if (type === 'hotel') return 'Hotel';
+  if (type === 'guest_house') return 'Guest House';
+  if (type === 'hostel') return 'Hostel';
   return 'Restaurant';
 };
 
 const getFoodStopInitials = (type: RouteSnackStop['type']) => {
   if (type === 'cafe') return 'CF';
   if (type === 'fast_food') return 'QB';
+  if (type === 'hotel') return 'HT';
+  if (type === 'guest_house') return 'GH';
+  if (type === 'hostel') return 'HS';
   return 'RS';
 };
+
+const isLodgingStop = (type: RouteSnackStop['type']) =>
+  type === 'hotel' || type === 'guest_house' || type === 'hostel';
 
 export default function TripPlannerPage() {
   const [aiForm, setAiForm] = useState({
@@ -160,8 +195,12 @@ export default function TripPlannerPage() {
   const [optimizingRoute, setOptimizingRoute] = useState(false);
   const [generatingAiTrip, setGeneratingAiTrip] = useState(false);
   const [loadingRouteSnacks, setLoadingRouteSnacks] = useState(false);
+  const [loadingRoadRoute, setLoadingRoadRoute] = useState(false);
   const [routeSnacks, setRouteSnacks] = useState<RouteSnackStop[]>([]);
+  const [roadRoutePath, setRoadRoutePath] = useState<[number, number][]>([]);
   const [plannedRouteSnackKeys, setPlannedRouteSnackKeys] = useState<string[]>([]);
+  const [persistedRouteSnacks, setPersistedRouteSnacks] = useState<SavedTripSnackStop[]>([]);
+  const [savingRouteSnackKey, setSavingRouteSnackKey] = useState<string | null>(null);
   const [deletingTripId, setDeletingTripId] = useState('');
   const [estimatedRouteDistance, setEstimatedRouteDistance] = useState<number | null>(null);
 
@@ -269,10 +308,54 @@ export default function TripPlannerPage() {
     [plannerStops]
   );
 
-  const routePath = useMemo(
+  const directRoutePath = useMemo(
     () => mapMarkers.map((marker) => [marker.lat, marker.lng] as [number, number]),
     [mapMarkers]
   );
+
+  const routePath = useMemo(
+    () => (roadRoutePath.length > 1 ? roadRoutePath : directRoutePath),
+    [directRoutePath, roadRoutePath]
+  );
+
+  const directRouteSignature = useMemo(
+    () => directRoutePath.map(([lat, lng]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join('|'),
+    [directRoutePath]
+  );
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    if (directRoutePath.length < 2) {
+      setRoadRoutePath([]);
+      setLoadingRoadRoute(false);
+      return () => {
+        isCurrent = false;
+      };
+    }
+
+    setLoadingRoadRoute(true);
+    fetchRoadRoute(directRoutePath)
+      .then((route) => {
+        if (!isCurrent) return;
+        setRoadRoutePath(route?.coordinates || []);
+        if (route?.distanceMeters) {
+          setEstimatedRouteDistance(Math.round(route.distanceMeters / 1000));
+        }
+      })
+      .catch((error) => {
+        if (!isCurrent) return;
+        console.error('Failed to load road route:', error);
+        setRoadRoutePath([]);
+      })
+      .finally(() => {
+        if (isCurrent) setLoadingRoadRoute(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [directRoutePath, directRouteSignature]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -322,12 +405,16 @@ export default function TripPlannerPage() {
     const lastRouteIndex = Math.max(routePath.length - 1, 1);
 
     return routeSnacks.map((snack) => {
-      const nearestIndex = Math.min(Math.max(snack.orderAlongRoute, 0), Math.max(mapMarkers.length - 1, 0));
-      const segmentStartIndex = Math.min(nearestIndex, Math.max(mapMarkers.length - 2, 0));
+      const routeIndex = Math.min(Math.max(snack.orderAlongRoute, 0), lastRouteIndex);
+      const routeProgress = Math.round((routeIndex / lastRouteIndex) * 100);
+      const nearestStopIndex = Math.min(
+        Math.round((routeProgress / 100) * Math.max(mapMarkers.length - 1, 0)),
+        Math.max(mapMarkers.length - 1, 0)
+      );
+      const segmentStartIndex = Math.min(nearestStopIndex, Math.max(mapMarkers.length - 2, 0));
       const fromStop = mapMarkers[segmentStartIndex];
       const toStop = mapMarkers[segmentStartIndex + 1];
-      const anchorStop = mapMarkers[nearestIndex];
-      const routeProgress = Math.round((nearestIndex / lastRouteIndex) * 100);
+      const anchorStop = mapMarkers[nearestStopIndex];
 
       return {
         ...snack,
@@ -340,7 +427,7 @@ export default function TripPlannerPage() {
             ? `Near ${anchorStop.name.replace(/^Day \d+:\s*/, '')}`
             : 'Near your route',
         timingLabel: anchorStop
-          ? `Best around Day ${plannerStops[nearestIndex]?.day ?? 1}`
+          ? `Best around Day ${plannerStops[nearestStopIndex]?.day ?? 1}`
           : 'Good pause point',
         routeProgress,
         detourLabel: snack.distanceFromRoute < 0.1
@@ -360,14 +447,52 @@ export default function TripPlannerPage() {
     [plannedRouteSnackKeys, routeSnackDetails]
   );
 
-  const togglePlannedRouteSnack = useCallback((snackKey: string) => {
-    setPlannedRouteSnackKeys((current) =>
-      current.includes(snackKey)
-        ? current.filter((key) => key !== snackKey)
-        : [...current, snackKey]
-    );
+  const togglePlannedRouteSnack = useCallback(async (snackKey: string) => {
+    const snack = routeSnackDetails.find((entry) => entry.key === snackKey);
+    if (!snack) return;
+
     setSelectedRouteSnackKey(snackKey);
-  }, []);
+
+    if (!selectedTripId) {
+      toast.error('Save your trip before adding route pauses');
+      return;
+    }
+
+    setSavingRouteSnackKey(snackKey);
+    try {
+      const savedIndex = persistedRouteSnacks.findIndex((entry) => getSavedRouteSnackKey(entry) === snackKey);
+
+      if (savedIndex >= 0) {
+        const response = await api.delete(`/trips/${selectedTripId}/snack-stops/${savedIndex}`);
+        const updatedTrip = response.data?.data as SavedTrip | undefined;
+        const updatedStops = updatedTrip?.snackStops || [];
+        setPersistedRouteSnacks(updatedStops);
+        setPlannedRouteSnackKeys(updatedStops.map(getSavedRouteSnackKey));
+        await loadData(true);
+        toast.success('Route pause removed');
+        return;
+      }
+
+      const response = await api.post(`/trips/${selectedTripId}/snack-stops`, {
+        name: snack.name,
+        lat: snack.lat,
+        lng: snack.lng,
+        type: snack.type,
+        overpassId: snack.id,
+        orderAlongRoute: snack.orderAlongRoute,
+      });
+      const updatedTrip = response.data?.data as SavedTrip | undefined;
+      const updatedStops = updatedTrip?.snackStops || [];
+      setPersistedRouteSnacks(updatedStops);
+      setPlannedRouteSnackKeys(updatedStops.map(getSavedRouteSnackKey));
+      await loadData(true);
+      toast.success('Route pause saved');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to update route pause'));
+    } finally {
+      setSavingRouteSnackKey(null);
+    }
+  }, [loadData, persistedRouteSnacks, routeSnackDetails, selectedTripId]);
 
   const recommendedSpecialization = useMemo(() => {
     if (plannerStops.length === 0) return '';
@@ -420,26 +545,28 @@ export default function TripPlannerPage() {
     };
 
     try {
+      let savedTrip: SavedTrip | undefined;
       if (selectedTripId) {
-        await api.put(`/trips/${selectedTripId}`, payload);
+        const response = await api.put(`/trips/${selectedTripId}`, payload);
+        savedTrip = response.data?.data as SavedTrip | undefined;
         toast.success('Trip updated successfully');
       } else {
         const response = await api.post('/trips', payload);
-        setSelectedTripId(response.data?.data?._id || null);
+        savedTrip = response.data?.data as SavedTrip | undefined;
+        setSelectedTripId(savedTrip?._id || null);
         toast.success('Trip saved successfully');
+      }
+
+      if (savedTrip) {
+        const savedStops = savedTrip.snackStops || [];
+        setPersistedRouteSnacks(savedStops);
+        setPlannedRouteSnackKeys(savedStops.map(getSavedRouteSnackKey));
       }
 
       await loadData(true);
       setBaselineSignature(createSignature(trimmedName, itinerary));
     } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : 'Failed to save trip';
-      toast.error(message);
+      toast.error(getErrorMessage(error, 'Failed to save trip'));
     } finally {
       setSavingTrip(false);
     }
@@ -456,7 +583,8 @@ export default function TripPlannerPage() {
     setItinerary(ordered);
     setBaselineSignature(createSignature(trip.name, ordered));
     setEstimatedRouteDistance(distanceKm ?? null);
-    setPlannedRouteSnackKeys([]);
+    setPersistedRouteSnacks(trip.snackStops || []);
+    setPlannedRouteSnackKeys((trip.snackStops || []).map(getSavedRouteSnackKey));
     setSelectedRouteSnackKey(null);
   }, []);
 
@@ -472,6 +600,7 @@ export default function TripPlannerPage() {
     setSelectedTripId(null);
     setBaselineSignature(createSignature(initialName, []));
     setEstimatedRouteDistance(null);
+    setPersistedRouteSnacks([]);
     setPlannedRouteSnackKeys([]);
     setSelectedRouteSnackKey(null);
     toast.success('Started a new trip draft');
@@ -497,20 +626,14 @@ export default function TripPlannerPage() {
           setItinerary([]);
           setBaselineSignature(createSignature(initialName, []));
           setEstimatedRouteDistance(null);
+          setPersistedRouteSnacks([]);
           setPlannedRouteSnackKeys([]);
           setSelectedRouteSnackKey(null);
         }
 
         await loadData(true);
       } catch (error: unknown) {
-        const message =
-          typeof error === 'object' &&
-          error !== null &&
-          'response' in error &&
-          typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-            ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-            : 'Failed to delete trip';
-        toast.error(message);
+        toast.error(getErrorMessage(error, 'Failed to delete trip'));
       } finally {
         setDeletingTripId('');
       }
@@ -1065,7 +1188,7 @@ export default function TripPlannerPage() {
               <CardTitle className="flex items-center justify-between gap-3 text-lg">
                 <span className="flex items-center gap-2">
                   <Utensils className="h-5 w-5 text-orange-500" />
-                  Food Stops Near Route
+                  Restaurants & Hotels Near Route
                 </span>
                 <span className="flex items-center gap-2">
                   {plannedRouteSnacks.length > 0 && (
@@ -1073,22 +1196,24 @@ export default function TripPlannerPage() {
                       {plannedRouteSnacks.length} planned
                     </Badge>
                   )}
-                  {loadingRouteSnacks && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {(loadingRouteSnacks || loadingRoadRoute) && (
+                    <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {routePath.length < 2 ? (
                 <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Add at least two destinations to scan for food stops along the route.
+                  Add at least two destinations to scan for restaurants and hotels along the route.
                 </div>
-              ) : loadingRouteSnacks ? (
+              ) : loadingRouteSnacks || loadingRoadRoute ? (
                 <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Searching cafes, quick bites, and restaurants near this route...
+                  Drawing the road route and searching restaurants and hotels nearby...
                 </div>
               ) : routeSnacks.length === 0 ? (
                 <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  No food stops found in the current route corridor.
+                  No restaurants or hotels found in the current route corridor.
                 </div>
               ) : (
                 <>
@@ -1103,7 +1228,13 @@ export default function TripPlannerPage() {
                             {selectedRouteSnack.segmentLabel}
                           </p>
                         </div>
-                        <Badge className="bg-orange-500 text-white hover:bg-orange-500">
+                        <Badge
+                          className={
+                            isLodgingStop(selectedRouteSnack.type)
+                              ? 'bg-blue-600 text-white hover:bg-blue-600'
+                              : 'bg-orange-500 text-white hover:bg-orange-500'
+                          }
+                        >
                           {selectedRouteSnack.detourLabel}
                         </Badge>
                       </div>
@@ -1125,14 +1256,19 @@ export default function TripPlannerPage() {
                         size="sm"
                         className="mt-3 w-full gap-2"
                         variant={plannedRouteSnackKeys.includes(selectedRouteSnack.key) ? 'outline' : 'default'}
+                        disabled={savingRouteSnackKey === selectedRouteSnack.key}
                         onClick={() => togglePlannedRouteSnack(selectedRouteSnack.key)}
                       >
-                        {plannedRouteSnackKeys.includes(selectedRouteSnack.key) ? (
+                        {savingRouteSnackKey === selectedRouteSnack.key ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : plannedRouteSnackKeys.includes(selectedRouteSnack.key) ? (
                           <CheckCircle2 className="h-4 w-4" />
                         ) : (
                           <Plus className="h-4 w-4" />
                         )}
-                        {plannedRouteSnackKeys.includes(selectedRouteSnack.key)
+                        {savingRouteSnackKey === selectedRouteSnack.key
+                          ? 'Saving pause...'
+                          : plannedRouteSnackKeys.includes(selectedRouteSnack.key)
                           ? 'Planned as route pause'
                           : 'Add as route pause'}
                       </Button>
@@ -1182,7 +1318,7 @@ export default function TripPlannerPage() {
                             <div className="flex items-center gap-3">
                               <span
                                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
-                                  isPlanned ? 'bg-teal-700' : 'bg-orange-500'
+                                  isPlanned ? 'bg-teal-700' : isLodgingStop(snack.type) ? 'bg-blue-600' : 'bg-orange-500'
                                 }`}
                               >
                                 {snack.initials}
@@ -1205,10 +1341,17 @@ export default function TripPlannerPage() {
                               size="sm"
                               variant={isPlanned ? 'outline' : 'secondary'}
                               className="h-8 gap-1.5"
+                              disabled={savingRouteSnackKey === snack.key}
                               onClick={() => togglePlannedRouteSnack(snack.key)}
                             >
-                              {isPlanned ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-                              {isPlanned ? 'Added' : 'Add pause'}
+                              {savingRouteSnackKey === snack.key ? (
+                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              ) : isPlanned ? (
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              ) : (
+                                <Plus className="h-3.5 w-3.5" />
+                              )}
+                              {savingRouteSnackKey === snack.key ? 'Saving' : isPlanned ? 'Added' : 'Add pause'}
                             </Button>
                           </div>
                         </div>

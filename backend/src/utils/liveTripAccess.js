@@ -38,6 +38,14 @@ function buildTripMetadata(booking) {
       images: destination.images || [],
       location: destination.location,
     })),
+    customDestinations: (booking.customDestinations || []).map((destination, index) => ({
+      _id: `custom-${index}`,
+      name: destination.name,
+      category: 'Custom destination',
+      images: [],
+      location: destination.location || null,
+      custom: true,
+    })),
   };
 }
 

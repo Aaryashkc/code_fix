@@ -224,12 +224,18 @@ function createUserIcon(status: 'default' | 'sos') {
 function getFoodStopLabel(type: RouteSnackStop['type']) {
   if (type === 'cafe') return 'Cafe';
   if (type === 'fast_food') return 'Quick Bite';
+  if (type === 'hotel') return 'Hotel';
+  if (type === 'guest_house') return 'Guest House';
+  if (type === 'hostel') return 'Hostel';
   return 'Restaurant';
 }
 
 function getFoodStopInitials(type: RouteSnackStop['type']) {
   if (type === 'cafe') return 'CF';
   if (type === 'fast_food') return 'QB';
+  if (type === 'hotel') return 'HT';
+  if (type === 'guest_house') return 'GH';
+  if (type === 'hostel') return 'HS';
   return 'RS';
 }
 
@@ -239,8 +245,9 @@ function getRouteSnackKey(snack: RouteSnackStop) {
 
 function createFoodStopIcon(type: RouteSnackStop['type'], isSelected: boolean, isPlanned: boolean) {
   const size = isSelected ? 38 : 32;
-  const bg = isPlanned ? '#0f766e' : '#f97316';
-  const border = isSelected ? '#ffffff' : isPlanned ? '#99f6e4' : '#fed7aa';
+  const isLodging = type === 'hotel' || type === 'guest_house' || type === 'hostel';
+  const bg = isPlanned ? '#0f766e' : isLodging ? '#2563eb' : '#f97316';
+  const border = isSelected ? '#ffffff' : isPlanned ? '#99f6e4' : isLodging ? '#bfdbfe' : '#fed7aa';
 
   return L.divIcon({
     className: '',

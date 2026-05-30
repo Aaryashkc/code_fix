@@ -7,7 +7,6 @@ import api from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
 import {
   buildLiveTripMarkers,
-  buildLiveTripRoutePath,
   getLiveTripEventLabel,
   prependLiveTripEvent,
   type LiveTripEvent,
@@ -19,8 +18,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Activity, Loader2, LocateFixed, MapPinned, ShieldAlert, Siren } from 'lucide-react';
+import { Activity, Bed, Loader2, LocateFixed, MapPinned, ShieldAlert, Siren, Utensils } from 'lucide-react';
 import type { ExploreMarker } from '@/components/map/UserExploreMap';
+import { fetchRoadRoute } from '@/lib/routeService';
+import { fetchSnacksAlongRoute, type RouteSnackStop } from '@/lib/overpassService';
+import {
+  buildLiveTripWaypoints,
+  formatNearbyDistance,
+  formatRouteDistance,
+  getRouteStopKey,
+  getRouteStopLabel,
+  isLodgingStop,
+} from '@/lib/liveTripRoute';
 
 const UserExploreMap = dynamic(() => import('@/components/map/UserExploreMap'), { ssr: false });
 const ACTIVE_SHARING_STORAGE_KEY = 'yatra.activeLiveTripSharing';
@@ -35,6 +44,11 @@ export default function ActiveTripPage() {
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [sharingLocation, setSharingLocation] = useState(false);
   const [sendingSOS, setSendingSOS] = useState(false);
+  const [roadRoutePath, setRoadRoutePath] = useState<[number, number][]>([]);
+  const [roadRouteDistance, setRoadRouteDistance] = useState<number | null>(null);
+  const [routeStops, setRouteStops] = useState<RouteSnackStop[]>([]);
+  const [routeStopsLoading, setRouteStopsLoading] = useState(false);
+  const [selectedRouteStopKey, setSelectedRouteStopKey] = useState<string | null>(null);
 
   const selectedBookingIdRef = useRef('');
   const watchIdRef = useRef<number | null>(null);
@@ -90,10 +104,56 @@ export default function ActiveTripPage() {
     [selectedSession]
   );
 
-  const routePath = useMemo(
-    () => buildLiveTripRoutePath(selectedSession?.destinations || []),
-    [selectedSession]
-  );
+  const routeWaypoints = useMemo(() => buildLiveTripWaypoints(selectedSession), [selectedSession]);
+
+  const routePath = roadRoutePath.length > 1 ? roadRoutePath : routeWaypoints;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRouteDetails() {
+      setRoadRoutePath([]);
+      setRoadRouteDistance(null);
+      setRouteStops([]);
+      setSelectedRouteStopKey(null);
+
+      if (routeWaypoints.length < 2) {
+        setRouteStopsLoading(false);
+        return;
+      }
+
+      setRouteStopsLoading(true);
+      try {
+        const roadRoute = await fetchRoadRoute(routeWaypoints);
+        const path = roadRoute?.coordinates?.length ? roadRoute.coordinates : routeWaypoints;
+        if (cancelled) return;
+
+        setRoadRoutePath(path);
+        setRoadRouteDistance(roadRoute?.distanceMeters || null);
+        const stops = await fetchSnacksAlongRoute(path, 800);
+        if (!cancelled) {
+          setRouteStops(stops);
+          setSelectedRouteStopKey(stops[0] ? getRouteStopKey(stops[0]) : null);
+        }
+      } catch (error) {
+        console.error('Failed to load active trip route details:', error);
+        if (!cancelled) {
+          setRoadRoutePath(routeWaypoints);
+          setRoadRouteDistance(null);
+          setRouteStops([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setRouteStopsLoading(false);
+        }
+      }
+    }
+
+    loadRouteDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [routeWaypoints]);
 
   useEffect(() => {
     if (!isConnected || !selectedBookingId) return;
@@ -410,7 +470,7 @@ export default function ActiveTripPage() {
                 <div>
                   <h2 className="text-2xl font-semibold">{selectedSession?.guide?.name || 'Guide not assigned'}</h2>
                   <p className="text-sm text-muted-foreground">
-                    {selectedSession?.booking.packageType} • {selectedSession?.booking.numberOfDays} days • {selectedSession?.booking.groupSize} traveler(s)
+                    {selectedSession?.booking.packageType} - {selectedSession?.booking.numberOfDays} days - {selectedSession?.booking.groupSize} traveler(s)
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -446,6 +506,7 @@ export default function ActiveTripPage() {
                 <CardTitle className="flex items-center gap-2">
                   <MapPinned className="h-5 w-5 text-primary" />
                   Live Route
+                  <Badge variant="outline" className="ml-auto">{formatRouteDistance(roadRouteDistance)}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -461,6 +522,9 @@ export default function ActiveTripPage() {
                     }
                     userLocationStatus={selectedSession?.lastSOS ? 'sos' : 'default'}
                     routePath={routePath}
+                    routeSnackStops={routeStops}
+                    selectedRouteSnackKey={selectedRouteStopKey}
+                    onSelectRouteSnack={setSelectedRouteStopKey}
                   />
                 </div>
               </CardContent>
@@ -504,6 +568,57 @@ export default function ActiveTripPage() {
                         {new Date(selectedSession.lastSOS.triggeredAt).toLocaleString()}
                       </p>
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/60 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Restaurants & Hotels Nearby</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {routeStopsLoading ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      Drawing the road route and checking nearby places...
+                    </div>
+                  ) : routePath.length < 2 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      Share your live location or add at least two mapped stops to show route-side places.
+                    </div>
+                  ) : routeStops.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      No restaurants or hotels found near this route yet.
+                    </div>
+                  ) : (
+                    routeStops.map((stop) => {
+                      const lodging = isLodgingStop(stop.type);
+                      const stopKey = getRouteStopKey(stop);
+                      const selected = stopKey === selectedRouteStopKey;
+                      return (
+                        <button
+                          key={stopKey}
+                          type="button"
+                          onClick={() => setSelectedRouteStopKey(stopKey)}
+                          className={`w-full rounded-lg border p-3 text-left transition ${
+                            selected ? 'border-primary bg-primary/5' : 'hover:border-primary/40 hover:bg-muted/40'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            {lodging ? (
+                              <Bed className="mt-0.5 h-4 w-4 text-blue-600" />
+                            ) : (
+                              <Utensils className="mt-0.5 h-4 w-4 text-orange-600" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{stop.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {getRouteStopLabel(stop.type)} - {formatNearbyDistance(stop.distanceFromRoute)}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
                   )}
                 </CardContent>
               </Card>

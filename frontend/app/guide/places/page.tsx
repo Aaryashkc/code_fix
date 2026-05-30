@@ -15,6 +15,7 @@ import { Plus, MapPin, Clock, CheckCircle, XCircle, ImagePlus, Loader2, X, type 
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import axios from 'axios';
+import { geocodePlaceName } from '@/lib/geocoding';
 import dynamic from 'next/dynamic';
 const MapAdvanced = dynamic(() => import('@/components/MapAdvanced'), { ssr: false });
 
@@ -48,6 +49,7 @@ export default function GuidePlacesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [resolvingLocation, setResolvingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<[number, number]>([27.7172, 85.324]);
   const [coordinateInputs, setCoordinateInputs] = useState({
     latitude: '27.7172',
@@ -113,6 +115,35 @@ export default function GuidePlacesPage() {
       latitude: latitude.toFixed(6),
       longitude: longitude.toFixed(6),
     });
+  };
+
+  const resolveAddressWithNominatim = async () => {
+    const query = [formData.name, formData.address].filter(Boolean).join(', ');
+    if (!query.trim()) {
+      toast.error('Enter a place name or address first');
+      return;
+    }
+
+    setResolvingLocation(true);
+    try {
+      const resolved = await geocodePlaceName(query);
+      if (!resolved) {
+        toast.error('Nominatim could not find that place');
+        return;
+      }
+
+      const [lng, lat] = resolved.location.coordinates;
+      selectLocationOnMap(lat, lng);
+      setFormData((current) => ({
+        ...current,
+        address: current.address || resolved.location.address,
+      }));
+      toast.success(`Location resolved: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+    } catch {
+      toast.error('Could not resolve location right now');
+    } finally {
+      setResolvingLocation(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -311,12 +342,17 @@ export default function GuidePlacesPage() {
 
               <div>
                 <label className="text-sm font-medium">Address</label>
-                <Input
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="e.g., Pokhara, Nepal"
-                  required
-                />
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="e.g., Pokhara, Nepal"
+                    required
+                  />
+                  <Button type="button" variant="outline" onClick={resolveAddressWithNominatim} disabled={resolvingLocation}>
+                    {resolvingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Find'}
+                  </Button>
+                </div>
               </div>
 
               <div className="rounded-xl border bg-muted/20 p-4">

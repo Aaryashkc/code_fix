@@ -70,7 +70,7 @@ export default function UserSnacksPage() {
             <Link href="/user/trips">
               <Button size="sm" variant="outline" className="gap-2">
                 <Route className="h-4 w-4" />
-                Trips
+                Trip Planner
               </Button>
             </Link>
           </div>

@@ -13,7 +13,7 @@ export interface RouteSnackStop {
   name: string;
   lat: number;
   lng: number;
-  type: 'cafe' | 'fast_food' | 'restaurant';
+  type: 'cafe' | 'fast_food' | 'restaurant' | 'hotel' | 'guest_house' | 'hostel';
   tags: Record<string, string>;
   distanceFromRoute: number; // km from nearest route point
   orderAlongRoute: number;  // index of nearest sampled point (for ordering)

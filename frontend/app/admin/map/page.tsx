@@ -11,7 +11,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSocket } from '@/context/SocketContext';
 import {
   buildLiveTripMarkers,
-  buildLiveTripRoutePath,
   getLiveTripEventLabel,
   prependLiveTripEvent,
   type LiveTripEvent,
@@ -19,7 +18,17 @@ import {
   upsertLiveTripSession,
 } from '@/lib/liveTrip';
 import type { ExploreMarker } from '@/components/map/UserExploreMap';
-import { Activity, MapPinned, ShieldAlert } from 'lucide-react';
+import { Activity, Bed, MapPinned, ShieldAlert, Utensils } from 'lucide-react';
+import { fetchSnacksAlongRoute, type RouteSnackStop } from '@/lib/overpassService';
+import { fetchRoadRoute } from '@/lib/routeService';
+import {
+  buildLiveTripWaypoints,
+  formatNearbyDistance,
+  formatRouteDistance,
+  getRouteStopKey,
+  getRouteStopLabel,
+  isLodgingStop,
+} from '@/lib/liveTripRoute';
 
 interface Place {
   _id: string;
@@ -40,6 +49,11 @@ export default function AdminMapPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [selectedLiveBookingId, setSelectedLiveBookingId] = useState('');
+  const [roadRoutePath, setRoadRoutePath] = useState<[number, number][]>([]);
+  const [roadRouteDistance, setRoadRouteDistance] = useState<number | null>(null);
+  const [routeStops, setRouteStops] = useState<RouteSnackStop[]>([]);
+  const [routeStopsLoading, setRouteStopsLoading] = useState(false);
+  const [selectedRouteStopKey, setSelectedRouteStopKey] = useState<string | null>(null);
 
   const fetchPlaces = useCallback(async () => {
     try {
@@ -160,10 +174,53 @@ export default function AdminMapPage() {
     [selectedLiveTrip]
   );
 
-  const liveTripRoutePath = useMemo(
-    () => buildLiveTripRoutePath(selectedLiveTrip?.destinations || []),
-    [selectedLiveTrip]
-  );
+  const liveTripWaypoints = useMemo(() => buildLiveTripWaypoints(selectedLiveTrip), [selectedLiveTrip]);
+  const liveTripRoutePath = roadRoutePath.length > 1 ? roadRoutePath : liveTripWaypoints;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRouteDetails() {
+      setRoadRoutePath([]);
+      setRoadRouteDistance(null);
+      setRouteStops([]);
+      setSelectedRouteStopKey(null);
+
+      if (liveTripWaypoints.length < 2) {
+        setRouteStopsLoading(false);
+        return;
+      }
+
+      setRouteStopsLoading(true);
+      try {
+        const roadRoute = await fetchRoadRoute(liveTripWaypoints);
+        const path = roadRoute?.coordinates?.length ? roadRoute.coordinates : liveTripWaypoints;
+        if (cancelled) return;
+
+        setRoadRoutePath(path);
+        setRoadRouteDistance(roadRoute?.distanceMeters || null);
+        const stops = await fetchSnacksAlongRoute(path, 800);
+        if (!cancelled) {
+          setRouteStops(stops);
+          setSelectedRouteStopKey(stops[0] ? getRouteStopKey(stops[0]) : null);
+        }
+      } catch (error) {
+        console.error('Failed to load admin live route details:', error);
+        if (!cancelled) {
+          setRoadRoutePath(liveTripWaypoints);
+          setRoadRouteDistance(null);
+          setRouteStops([]);
+        }
+      } finally {
+        if (!cancelled) setRouteStopsLoading(false);
+      }
+    }
+
+    loadRouteDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [liveTripWaypoints]);
 
   const liveTripFocusLocation = useMemo<[number, number] | null>(() => {
     const sosLat = selectedLiveTrip?.lastSOS?.lat;
@@ -246,6 +303,7 @@ export default function AdminMapPage() {
             <CardTitle className="flex items-center gap-2">
               <MapPinned className="h-5 w-5 text-primary" />
               Live Trip Monitor
+              <Badge variant="outline" className="ml-auto">{formatRouteDistance(roadRouteDistance)}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -257,6 +315,9 @@ export default function AdminMapPage() {
                 userLocation={liveTripFocusLocation}
                 userLocationStatus={selectedLiveTrip?.lastSOS ? 'sos' : 'default'}
                 routePath={liveTripRoutePath}
+                routeSnackStops={routeStops}
+                selectedRouteSnackKey={selectedRouteStopKey}
+                onSelectRouteSnack={setSelectedRouteStopKey}
               />
             </div>
             {!selectedLiveTrip && (
@@ -357,6 +418,55 @@ export default function AdminMapPage() {
                     <p className="text-xs text-muted-foreground">No persisted events yet.</p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+          {selectedLiveTrip && (
+            <Card className="border border-border/60 shadow-sm">
+              <CardHeader>
+                <CardTitle>Nearby Hotels & Restaurants</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {routeStopsLoading ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    Drawing route and scanning nearby places...
+                  </div>
+                ) : liveTripRoutePath.length < 2 ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    Route details appear after there are two mapped points.
+                  </div>
+                ) : routeStops.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    No route-side hotels or restaurants found.
+                  </div>
+                ) : (
+                  routeStops.slice(0, 8).map((stop) => {
+                    const stopKey = getRouteStopKey(stop);
+                    const selected = stopKey === selectedRouteStopKey;
+                    const lodging = isLodgingStop(stop.type);
+
+                    return (
+                      <button
+                        key={stopKey}
+                        type="button"
+                        onClick={() => setSelectedRouteStopKey(stopKey)}
+                        className={`w-full rounded-lg border p-3 text-left transition ${
+                          selected ? 'border-primary bg-primary/5' : 'hover:border-primary/40 hover:bg-muted/40'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {lodging ? <Bed className="mt-0.5 h-4 w-4 text-blue-600" /> : <Utensils className="mt-0.5 h-4 w-4 text-orange-600" />}
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{stop.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {getRouteStopLabel(stop.type)} - {formatNearbyDistance(stop.distanceFromRoute)}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           )}

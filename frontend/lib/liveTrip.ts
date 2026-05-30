@@ -9,6 +9,7 @@ export interface LiveTripDestination {
     coordinates?: [number, number];
     address?: string;
   };
+  custom?: boolean;
 }
 
 export interface LiveTripParticipant {

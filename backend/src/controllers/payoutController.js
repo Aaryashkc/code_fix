@@ -2,12 +2,15 @@ const Commission = require('../models/Commission');
 const Payout = require('../models/Payout');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const { ensureCommissionsForCompletedBookings, ensureCommissionsForGuide } = require('../utils/commissionBackfill');
 
 // @desc    Get pending payouts per guide
 // @route   GET /api/payouts/pending
 // @access  Private (Admin)
 exports.getPendingPayouts = async (req, res) => {
   try {
+    await ensureCommissionsForCompletedBookings();
+
     const pendingByGuide = await Commission.aggregate([
       { $match: { status: 'pending' } },
       {
@@ -240,6 +243,8 @@ exports.requestPayout = async (req, res) => {
     const { paymentMethod, notes } = req.body;
     const guideId = req.user.id;
 
+    await ensureCommissionsForGuide(guideId);
+
     const pendingCommissions = await Commission.find({ guide: guideId, status: 'pending' });
     if (pendingCommissions.length === 0) {
       return res.status(400).json({
@@ -284,6 +289,8 @@ exports.requestPayout = async (req, res) => {
 exports.getMyPayouts = async (req, res) => {
   try {
     const guideId = req.user.id;
+
+    await ensureCommissionsForGuide(guideId);
 
     const [payouts, pendingCommissions] = await Promise.all([
       Payout.find({ guide: guideId }).sort('-createdAt').limit(20),

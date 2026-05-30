@@ -17,7 +17,7 @@ const userNavItems = [
   { href: '/user/explore', label: 'Explore', icon: Compass },
   { href: '/destinations', label: 'Browse Catalog', icon: LocateFixed },
   { href: '/user/guides', label: 'Find Guides', icon: Users },
-  { href: '/user/trips', label: 'Trips', icon: Route },
+  { href: '/user/trips', label: 'Trip Planner', icon: Route },
   { href: '/user/active-trip', label: 'Active Trip', icon: LocateFixed },
   { href: '/user/bookings', label: 'Bookings', icon: Calendar },
   { href: '/user/wishlist', label: 'Saved', icon: Heart },
@@ -65,7 +65,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       case '/user/guides':
         return 'Find local experts for your trip';
       case '/user/trips':
-        return 'Build and organize your plans';
+        return 'Build, save, and organize draft itineraries';
       case '/user/bookings':
         return 'Track requests and confirmations';
       case '/user/active-trip':

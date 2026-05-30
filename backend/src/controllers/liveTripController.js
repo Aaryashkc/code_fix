@@ -90,7 +90,7 @@ exports.getAccessibleLiveTrips = async (req, res) => {
         booking: metadata.booking,
         tourist: metadata.tourist,
         guide: metadata.guide,
-        destinations: metadata.destinations,
+        destinations: [...metadata.destinations, ...metadata.customDestinations],
         latestLocation,
         lastSOS,
         participantCount: snapshot?.participantCount || 0,
