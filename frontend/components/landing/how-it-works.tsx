@@ -1,41 +1,34 @@
 "use client"
 
-import { Heart, Search, CheckCircle } from "lucide-react"
 import { motion } from "framer-motion"
 
 const steps = [
   {
     num: "01",
-    icon: Heart,
-    title: "Set Your Preferences",
-    description: "Tell us about your interests, budget, fitness level, and travel style.",
-    color: "from-rose-500 to-pink-600",
+    title: "Define Your Vision",
+    description: "Tell us about your interests, budget, physical fitness levels, and desired pacing.",
   },
   {
     num: "02",
-    icon: Search,
-    title: "Get Recommendations",
-    description: "Receive personalized destination suggestions and curated itineraries.",
-    color: "from-blue-500 to-indigo-500",
+    title: "Curate the Route",
+    description: "Receive bespoke destination suggestions and tailored itinerary recommendations.",
   },
   {
     num: "03",
-    icon: CheckCircle,
-    title: "Book Your Guide",
-    description: "Browse verified guides, compare profiles, and book your perfect match.",
-    color: "from-[hsl(228_62%_30%)] to-[hsl(228_55%_50%)]",
+    title: "Secure Verified Guides",
+    description: "Browse certified local experts, review profiles, and secure your perfect trail companion.",
   },
 ]
 
 const containerVariants = {
   hidden: {},
   visible: {
-    transition: { staggerChildren: 0.2 },
+    transition: { staggerChildren: 0.12 },
   },
 }
 
 const stepVariants = {
-  hidden: { opacity: 0, y: 50 },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
@@ -46,26 +39,26 @@ const stepVariants = {
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="relative bg-card py-24 lg:py-32 overflow-hidden">
-      {/* Background decoration */}
+      {/* Structural horizontal rules */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true }}
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary">
-            Simple Process
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80 dark:text-primary/95">
+            The Process
           </span>
-          <h2 className="mt-6 text-balance font-serif text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+          <h2 className="mt-4 text-balance font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             How It Works
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-            Three simple steps to your perfect Nepal adventure
+          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">
+            A seamless, three-stage journey to realizing your custom-made Himalayan adventure.
           </p>
         </motion.div>
 
@@ -73,43 +66,27 @@ export function HowItWorks() {
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="relative mt-20 grid gap-12 md:grid-cols-3 md:gap-8"
+          viewport={{ once: true }}
+          className="mt-20 grid gap-0 md:grid-cols-3 divide-y divide-border/60 md:divide-y-0 md:divide-x md:divide-border/40"
         >
-          {/* Animated dashed connecting line (desktop) */}
-          <div className="absolute top-[36px] left-[20%] hidden h-[2px] w-[60%] md:block overflow-hidden">
-            <motion.div
-              className="h-full w-full border-t-2 border-dashed border-primary/20"
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.2, delay: 0.5, ease: "easeOut" }}
-              style={{ transformOrigin: "left" }}
-            />
-          </div>
-
           {steps.map((step) => (
             <motion.div
               key={step.num}
               variants={stepVariants}
-              className="relative flex flex-col items-center text-center"
+              className="relative p-8 md:p-12 flex flex-col items-start transition-all duration-300 group hover:bg-background/40"
             >
-              {/* Step indicator - refined circle */}
-              <motion.div
-                whileHover={{ scale: 1.08 }}
-                transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                className="relative z-10"
-              >
-                <div className={`flex h-[72px] w-[72px] items-center justify-center rounded-full bg-gradient-to-br ${step.color} shadow-lg shadow-primary/10`}>
-                  <step.icon className="h-8 w-8 text-white" strokeWidth={1.75} />
-                </div>
-                <div className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-background border-2 border-border text-xs font-bold text-foreground shadow-sm">
-                  {step.num}
-                </div>
-              </motion.div>
+              {/* Massive, elegant serif background number */}
+              <div className="text-6xl md:text-7xl font-serif font-black tracking-tighter text-primary/10 transition-transform duration-500 ease-out group-hover:scale-110 group-hover:text-primary/20 select-none">
+                {step.num}
+              </div>
 
-              <h3 className="mt-6 text-lg font-semibold text-foreground">{step.title}</h3>
-              <p className="mt-2 max-w-[280px] text-sm leading-relaxed text-muted-foreground">{step.description}</p>
+              <h3 className="mt-6 text-lg font-bold tracking-tight text-foreground transition-colors duration-300 group-hover:text-primary">
+                {step.title}
+              </h3>
+              
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {step.description}
+              </p>
             </motion.div>
           ))}
         </motion.div>
@@ -117,3 +94,4 @@ export function HowItWorks() {
     </section>
   )
 }
+

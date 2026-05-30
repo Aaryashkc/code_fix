@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { RouteSnackStop } from '@/lib/overpassService';
@@ -281,8 +281,20 @@ function FitToData({
   userLocation?: [number, number] | null;
 }) {
   const map = useMap();
+  const lastFitKeyRef = useRef('');
+
+  const fitKey = useMemo(() => {
+    const markerKey = markers
+      .map((marker) => `${marker.id}:${marker.lat.toFixed(5)},${marker.lng.toFixed(5)}`)
+      .join('|');
+
+    return `${markerKey}:${userLocation ? 'with-user' : 'without-user'}`;
+  }, [markers, userLocation]);
 
   useEffect(() => {
+    if (lastFitKeyRef.current === fitKey) return;
+    lastFitKeyRef.current = fitKey;
+
     const points: [number, number][] = markers.map((marker) => [marker.lat, marker.lng]);
     if (userLocation) points.push(userLocation);
 
@@ -298,7 +310,7 @@ function FitToData({
 
     const bounds = L.latLngBounds(points);
     map.fitBounds(bounds, { padding: [40, 40] });
-  }, [map, markers, userLocation]);
+  }, [fitKey, map, markers, userLocation]);
 
   return null;
 }
@@ -354,6 +366,31 @@ export default function UserExploreMap({
     [plannedRouteSnackKeys]
   );
 
+  const markerIconsByKey = useMemo(() => {
+    const iconMap = new Map<string, L.DivIcon>();
+    markers.forEach((marker) => {
+      const isSelected = marker.id === selectedMarkerId;
+      iconMap.set(marker.id, createMarkerIcon(marker, isSelected));
+    });
+    return iconMap;
+  }, [markers, selectedMarkerId]);
+
+  const userIcon = useMemo(
+    () => createUserIcon(userLocationStatus),
+    [userLocationStatus]
+  );
+
+  const routeSnackIconsByKey = useMemo(() => {
+    const iconMap = new Map<string, L.DivIcon>();
+    routeSnackStops.forEach((snack) => {
+      const snackKey = getRouteSnackKey(snack);
+      const isSelected = snackKey === selectedRouteSnackKey;
+      const isPlanned = plannedSnackKeySet.has(snackKey);
+      iconMap.set(snackKey, createFoodStopIcon(snack.type, isSelected, isPlanned));
+    });
+    return iconMap;
+  }, [plannedSnackKeySet, routeSnackStops, selectedRouteSnackKey]);
+
   return (
     <>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -372,12 +409,11 @@ export default function UserExploreMap({
         <FocusRouteSnack snack={selectedRouteSnack} />
 
         {markers.map((marker) => {
-        const isSelected = marker.id === selectedMarkerId;
         return (
           <Marker
             key={marker.id}
             position={[marker.lat, marker.lng]}
-            icon={createMarkerIcon(marker, isSelected)}
+            icon={markerIconsByKey.get(marker.id)}
             eventHandlers={onSelectMarker ? {
               click: () => onSelectMarker(marker.id),
             } : undefined}
@@ -396,7 +432,7 @@ export default function UserExploreMap({
         })}
 
         {userLocation && (
-          <Marker position={userLocation} icon={createUserIcon(userLocationStatus)}>
+          <Marker position={userLocation} icon={userIcon}>
             <Popup>{userLocationStatus === 'sos' ? 'Emergency location' : 'Live traveler location'}</Popup>
           </Marker>
         )}
@@ -409,7 +445,7 @@ export default function UserExploreMap({
           <Marker
             key={snackKey}
             position={[snack.lat, snack.lng]}
-            icon={createFoodStopIcon(snack.type, isSelected, isPlanned)}
+            icon={routeSnackIconsByKey.get(snackKey)}
             zIndexOffset={isSelected ? 700 : 500}
             eventHandlers={onSelectRouteSnack ? {
               click: () => onSelectRouteSnack(snackKey),

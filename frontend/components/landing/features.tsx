@@ -1,91 +1,81 @@
 "use client"
 
-import { CheckCircle, MapPin, Compass, PhoneCall, Shield, Users } from "lucide-react"
 import { motion } from "framer-motion"
 
 const features = [
   {
-    icon: CheckCircle,
+    tag: "01 / SAFETY",
     title: "Verified Local Guides",
-    description: "All guides are TAAN-verified with background checks, ensuring safe and authentic experiences.",
-    gradient: "from-[hsl(228_72%_25%)] to-[hsl(228_60%_48%)]",
-    glow: "shadow-[hsl(228_62%_35%)]/25",
+    description: "All guides are TAAN-verified with rigorous background checks, ensuring safe and authentic alpine experiences.",
   },
   {
-    icon: MapPin,
+    tag: "02 / DISCOVERY",
     title: "Personal Travel Map",
-    description: "Create pins, mark visited places, and build your own interactive travel map of Nepal.",
-    gradient: "from-blue-500 to-cyan-500",
-    glow: "shadow-blue-500/20",
+    description: "Create pins, mark visited places, and build your own interactive travel map of Nepal's hidden paths.",
   },
   {
-    icon: Compass,
+    tag: "03 / TAILORED",
     title: "Curated Recommendations",
     description: "Get personalized destination suggestions based on your interests, budget, and fitness level.",
-    gradient: "from-amber-500 to-orange-500",
-    glow: "shadow-amber-500/20",
   },
   {
-    icon: PhoneCall,
+    tag: "04 / ASSISTANCE",
     title: "24/7 Travel Support",
-    description: "Round-the-clock assistance from our team, from booking queries to on-trail emergencies.",
-    gradient: "from-rose-500 to-pink-500",
-    glow: "shadow-rose-500/20",
+    description: "Round-the-clock assistance from our dedicated team, from booking queries to on-trail emergencies.",
   },
   {
-    icon: Shield,
+    tag: "05 / CONFIDENCE",
     title: "Secure Booking",
-    description: "Book with confidence through our secure payment system with free cancellation options.",
-    gradient: "from-teal-600 to-cyan-500",
-    glow: "shadow-teal-500/20",
+    description: "Book with confidence through our secure payment system with free and transparent cancellation options.",
   },
   {
-    icon: Users,
+    tag: "06 / CONNECTION",
     title: "Cultural Immersion",
-    description: "Go beyond sightseeing with authentic local experiences, homestays, and cultural exchanges.",
-    gradient: "from-violet-500 to-purple-600",
-    glow: "shadow-violet-500/20",
+    description: "Go far beyond typical sightseeing with authentic local experiences, homestays, and deep cultural exchanges.",
   },
 ]
 
 const containerVariants = {
   hidden: {},
   visible: {
-    transition: { staggerChildren: 0.1 },
+    transition: { staggerChildren: 0.08 },
   },
 }
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 15 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
+    transition: { duration: 0.5, ease: "easeOut" as const },
   },
 }
 
 export function Features() {
   return (
     <section className="relative bg-background py-24 lg:py-32 overflow-hidden">
-      {/* Subtle background accent — navy tones */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(228_62%_25%_/_0.05),transparent_50%),radial-gradient(circle_at_70%_80%,hsl(228_62%_25%_/_0.05),transparent_50%)]" />
+      {/* Premium, ultra-subtle ambient background grid line */}
+      <div className="absolute inset-0 pointer-events-none opacity-20 dark:opacity-10">
+        <div className="absolute top-0 left-1/4 h-full w-px bg-gradient-to-b from-border via-transparent to-border" />
+        <div className="absolute top-0 left-3/4 h-full w-px bg-gradient-to-b from-border via-transparent to-border" />
+      </div>
 
       <div className="relative mx-auto max-w-7xl px-4 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center"
+          className="text-left max-w-3xl"
         >
-          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary">
-            Why Yatra
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80 dark:text-primary/95">
+            Architected for Travel
           </span>
-          <h2 className="mt-6 text-balance font-serif text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
-            Everything you need for the perfect trip
+          <h2 className="mt-4 text-balance font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+            Everything you need for the perfect Himalayan journey
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-            From finding verified guides to planning your itinerary, we make exploring Nepal effortless
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+            From finding verified local experts to interactive navigation, we build the digital companion that makes exploring Nepal effortless.
           </p>
         </motion.div>
 
@@ -93,27 +83,29 @@ export function Features() {
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          viewport={{ once: true }}
+          className="mt-20 grid gap-x-12 gap-y-16 sm:grid-cols-2 lg:grid-cols-3"
         >
           {features.map((feature) => (
             <motion.div
               key={feature.title}
               variants={cardVariants}
-              className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card p-7 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+              className="group relative border-t border-border/80 pt-8 transition-all duration-300"
             >
-              {/* Hover top accent line */}
-              <div className={`absolute top-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-500 bg-gradient-to-r ${feature.gradient} to-transparent`} />
+              {/* Ultra-thin animating line under the top border */}
+              <div className="absolute top-0 left-0 h-[1.5px] w-0 bg-primary transition-all duration-500 ease-out group-hover:w-full" />
 
-              {/* Gradient icon badge */}
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} shadow-lg ${feature.glow} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
-              >
-                <feature.icon className="h-6 w-6 text-white" strokeWidth={1.75} />
-              </div>
-
-              <h3 className="mt-5 text-base font-semibold text-foreground">{feature.title}</h3>
-              <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
+              <span className="text-xs font-semibold tracking-widest text-primary/60 dark:text-primary-foreground/60 uppercase font-mono">
+                {feature.tag}
+              </span>
+              
+              <h3 className="mt-4 text-lg font-bold tracking-tight text-foreground transition-colors duration-200 group-hover:text-primary">
+                {feature.title}
+              </h3>
+              
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {feature.description}
+              </p>
             </motion.div>
           ))}
         </motion.div>
@@ -121,3 +113,4 @@ export function Features() {
     </section>
   )
 }
+

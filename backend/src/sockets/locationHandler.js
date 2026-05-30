@@ -6,7 +6,7 @@ const {
   triggerTripSOS,
   updateTripLocation,
 } = require('./liveTripState');
-const { getAccessibleBooking } = require('../utils/liveTripAccess');
+const { assertLiveTripActive, getAccessibleBooking } = require('../utils/liveTripAccess');
 const { recordLiveTripEvent, recordLocationMilestone } = require('../utils/liveTripEvents');
 
 function emitTripSnapshot(io, bookingId) {
@@ -36,6 +36,7 @@ function registerLocationHandlers({ io, socket }) {
         id: socket.userId,
         role: socket.userRole,
       });
+      assertLiveTripActive(access.booking);
 
       socket.join(access.metadata.room);
       socket.data.joinedTripRooms.add(bookingId);
@@ -122,6 +123,7 @@ function registerLocationHandlers({ io, socket }) {
         id: socket.userId,
         role: socket.userRole,
       });
+      assertLiveTripActive(access.booking);
 
       if (!access.permissions.isTourist && !access.permissions.isAdmin) {
         throw new Error('Only tourists can broadcast trip location');
@@ -180,6 +182,7 @@ function registerLocationHandlers({ io, socket }) {
         id: socket.userId,
         role: socket.userRole,
       });
+      assertLiveTripActive(access.booking);
 
       if (!access.permissions.isTourist && !access.permissions.isAdmin) {
         throw new Error('Only tourists can stop trip location sharing');
@@ -223,6 +226,7 @@ function registerLocationHandlers({ io, socket }) {
         id: socket.userId,
         role: socket.userRole,
       });
+      assertLiveTripActive(access.booking);
 
       if (!access.permissions.isTourist && !access.permissions.isGuide && !access.permissions.isAdmin) {
         throw new Error('Not authorized to trigger SOS');

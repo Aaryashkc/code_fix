@@ -1,5 +1,7 @@
 const Booking = require('../models/Booking');
 
+const LIVE_TRIP_ACTIVE_STATUS = 'confirmed';
+
 function createAccessError(message, statusCode) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -78,8 +80,16 @@ async function getAccessibleBooking(bookingId, user) {
   };
 }
 
+function assertLiveTripActive(booking) {
+  if (booking.status !== LIVE_TRIP_ACTIVE_STATUS) {
+    throw createAccessError('Live trip sharing is only available for confirmed active bookings', 400);
+  }
+}
+
 module.exports = {
+  assertLiveTripActive,
   buildTripMetadata,
   createAccessError,
   getAccessibleBooking,
+  LIVE_TRIP_ACTIVE_STATUS,
 };

@@ -1,9 +1,8 @@
 const Booking = require('../models/Booking');
-const { buildTripMetadata } = require('../utils/liveTripAccess');
+const { buildTripMetadata, LIVE_TRIP_ACTIVE_STATUS } = require('../utils/liveTripAccess');
 const { getRecentEventsForBookings } = require('../utils/liveTripEvents');
 const { listLiveTripSnapshots } = require('../sockets/liveTripState');
 
-const LIVE_ELIGIBLE_STATUSES = ['confirmed', 'completed'];
 const LIVE_LOCATION_FRESH_MS = 2 * 60 * 1000;
 
 function hasCoordinates(location) {
@@ -46,7 +45,7 @@ function getLastSosFromEvents(events = []) {
 exports.getAccessibleLiveTrips = async (req, res) => {
   try {
     const filter = {
-      status: { $in: LIVE_ELIGIBLE_STATUSES },
+      status: LIVE_TRIP_ACTIVE_STATUS,
     };
 
     if (req.user.role === 'tourist') {

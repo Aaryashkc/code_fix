@@ -10,6 +10,7 @@ const UserExploreMap = dynamic(() => import('@/components/map/UserExploreMap'), 
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSocket } from '@/context/SocketContext';
 import {
+  buildLiveTripRoutePath,
   buildLiveTripMarkers,
   getLiveTripEventLabel,
   prependLiveTripEvent,
@@ -22,7 +23,6 @@ import { Activity, Bed, MapPinned, ShieldAlert, Utensils } from 'lucide-react';
 import { fetchSnacksAlongRoute, type RouteSnackStop } from '@/lib/overpassService';
 import { fetchRoadRoute } from '@/lib/routeService';
 import {
-  buildLiveTripWaypoints,
   formatNearbyDistance,
   formatRouteDistance,
   getRouteStopKey,
@@ -171,10 +171,25 @@ export default function AdminMapPage() {
 
   const liveTripMarkers = useMemo<ExploreMarker[]>(
     () => buildLiveTripMarkers(selectedLiveTrip?.destinations || []),
-    [selectedLiveTrip]
+    [selectedLiveTrip?.destinations]
   );
 
-  const liveTripWaypoints = useMemo(() => buildLiveTripWaypoints(selectedLiveTrip), [selectedLiveTrip]);
+  const liveTripRouteOriginKey = selectedLiveTrip?.latestLocation
+    ? `${selectedLiveTrip.latestLocation.lat.toFixed(3)},${selectedLiveTrip.latestLocation.lng.toFixed(3)}`
+    : '';
+
+  const liveTripWaypoints = useMemo(
+    () => {
+      const plannedPath = buildLiveTripRoutePath(selectedLiveTrip?.destinations || []);
+      if (!liveTripRouteOriginKey) return plannedPath;
+
+      const [lat, lng] = liveTripRouteOriginKey.split(',').map(Number);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return plannedPath;
+
+      return [[lat, lng] as [number, number], ...plannedPath];
+    },
+    [liveTripRouteOriginKey, selectedLiveTrip?.destinations]
+  );
   const liveTripRoutePath = roadRoutePath.length > 1 ? roadRoutePath : liveTripWaypoints;
 
   useEffect(() => {

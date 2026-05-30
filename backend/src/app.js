@@ -22,6 +22,7 @@ const aiRoutes = require('./routes/aiRoutes');
 const liveTripRoutes = require('./routes/liveTripRoutes');
 const commissionRoutes = require('./routes/commissionRoutes');
 const payoutRoutes = require('./routes/payoutRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 const notificationService = require('./utils/notificationService');
 
 // Validate critical environment variables at startup
@@ -173,6 +174,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/live-trips', liveTripRoutes);
 app.use('/api/commissions', commissionRoutes);
 app.use('/api/payouts', payoutRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Initialize notification service with app reference
 notificationService.setApp(app);

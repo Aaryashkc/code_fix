@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
 import {
+  buildLiveTripRoutePath,
   buildLiveTripMarkers,
   getLiveTripEventLabel,
   prependLiveTripEvent,
@@ -23,7 +24,6 @@ import type { ExploreMarker } from '@/components/map/UserExploreMap';
 import { fetchRoadRoute } from '@/lib/routeService';
 import { fetchSnacksAlongRoute, type RouteSnackStop } from '@/lib/overpassService';
 import {
-  buildLiveTripWaypoints,
   formatNearbyDistance,
   formatRouteDistance,
   getRouteStopKey,
@@ -101,12 +101,32 @@ export default function ActiveTripPage() {
 
   const mapMarkers = useMemo<ExploreMarker[]>(
     () => buildLiveTripMarkers(selectedSession?.destinations || []),
-    [selectedSession]
+    [selectedSession?.destinations]
   );
 
-  const routeWaypoints = useMemo(() => buildLiveTripWaypoints(selectedSession), [selectedSession]);
+  const routeOriginKey = selectedSession?.latestLocation
+    ? `${selectedSession.latestLocation.lat.toFixed(3)},${selectedSession.latestLocation.lng.toFixed(3)}`
+    : '';
+
+  const routeWaypoints = useMemo(
+    () => {
+      const plannedPath = buildLiveTripRoutePath(selectedSession?.destinations || []);
+      if (!routeOriginKey) return plannedPath;
+
+      const [lat, lng] = routeOriginKey.split(',').map(Number);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return plannedPath;
+
+      return [[lat, lng] as [number, number], ...plannedPath];
+    },
+    [routeOriginKey, selectedSession?.destinations]
+  );
 
   const routePath = roadRoutePath.length > 1 ? roadRoutePath : routeWaypoints;
+
+  const liveUserLocation = useMemo<[number, number] | null>(() => {
+    if (!selectedSession?.latestLocation) return null;
+    return [selectedSession.latestLocation.lat, selectedSession.latestLocation.lng];
+  }, [selectedSession?.latestLocation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -515,11 +535,7 @@ export default function ActiveTripPage() {
                     markers={mapMarkers}
                     selectedMarkerId={mapMarkers[0]?.id}
                     onSelectMarker={() => {}}
-                    userLocation={
-                      selectedSession?.latestLocation
-                        ? [selectedSession.latestLocation.lat, selectedSession.latestLocation.lng]
-                        : null
-                    }
+                    userLocation={liveUserLocation}
                     userLocationStatus={selectedSession?.lastSOS ? 'sos' : 'default'}
                     routePath={routePath}
                     routeSnackStops={routeStops}
