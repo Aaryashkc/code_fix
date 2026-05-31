@@ -216,7 +216,7 @@ export default function UserProfilePage() {
               <div className="flex min-w-0 items-center gap-4">
                 <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-background">
                   {profileUser?.avatar ? (
-                    <Image src={profileUser.avatar} alt={formData.name} fill className="object-cover" />
+                    <Image src={profileUser.avatar} alt={formData.name} fill sizes="80px" className="object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-primary text-xl font-bold text-primary-foreground">
                       {getInitials(formData.name)}

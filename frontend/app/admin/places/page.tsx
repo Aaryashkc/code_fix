@@ -565,6 +565,7 @@ export default function AdminPlacesPage() {
                         src={place.images?.[0] || '/placeholder.svg'}
                         alt={`${place.name} cover`}
                         fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
                       />
                       <Badge className={`absolute left-3 top-3 capitalize gap-1.5 ${statusConfig.bg} ${statusConfig.color} border-0`}>
@@ -719,7 +720,7 @@ export default function AdminPlacesPage() {
                     {editPlace.images.map((image, index) => (
                       <div key={`${image}-${index}`} className="overflow-hidden rounded-xl border bg-card">
                         <div className="relative aspect-[16/9]">
-                          <Image src={image} alt={`${editPlace.name} photo ${index + 1}`} fill className="object-cover" />
+                          <Image src={image} alt={`${editPlace.name} photo ${index + 1}`} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
                           {index === 0 && (
                             <Badge className="absolute left-2 top-2 gap-1 bg-primary">
                               <Star className="h-3 w-3 fill-current" />

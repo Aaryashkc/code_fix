@@ -103,7 +103,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
       nextSocket.on('connect_error', (error) => {
         setIsConnected(false);
-        console.error('Socket connection error:', error.message);
+        console.warn('Socket connection error:', error?.message || error || 'Unknown connection error');
       });
     };
 

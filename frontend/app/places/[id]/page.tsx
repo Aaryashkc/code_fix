@@ -189,6 +189,7 @@ export default function PlaceDetailPage() {
               src={place.images[currentImageIndex] || '/placeholder.svg'}
               alt={place.name}
               fill
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
             />
           </div>
@@ -199,7 +200,7 @@ export default function PlaceDetailPage() {
                 className="relative overflow-hidden rounded-2xl cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => setCurrentImageIndex(idx + 1)}
               >
-                <Image src={img} alt={`${place.name} ${idx + 2}`} fill className="object-cover" />
+                <Image src={img} alt={`${place.name} ${idx + 2}`} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
               </div>
             ))}
           </div>
@@ -393,7 +394,7 @@ export default function PlaceDetailPage() {
                         <div className="flex items-start gap-4">
                           <div className="relative h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                             {review.reviewer.avatar ? (
-                              <Image src={review.reviewer.avatar} alt={review.reviewer.name} fill className="object-cover" />
+                              <Image src={review.reviewer.avatar} alt={review.reviewer.name} fill sizes="40px" className="object-cover" />
                             ) : (
                               <span className="font-semibold">{review.reviewer.name[0]}</span>
                             )}
@@ -439,6 +440,7 @@ export default function PlaceDetailPage() {
                             src={guide.avatar || '/placeholder.svg'}
                             alt={guide.name}
                             fill
+                            sizes="48px"
                             className="object-cover"
                           />
                         </div>
@@ -478,6 +480,7 @@ export default function PlaceDetailPage() {
                             src={nearby.images[0] || '/placeholder.svg'}
                             alt={nearby.name}
                             fill
+                            sizes="64px"
                             className="object-cover"
                           />
                         </div>

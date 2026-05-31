@@ -133,8 +133,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setUnreadCount(prev => prev + 1);
     };
 
-    const handleConnectError = (err: Error) => {
-      console.error('Socket connection error:', err.message);
+    const handleConnectError = (err: unknown) => {
+      const errorObject = err as { message?: string };
+      console.warn('Socket connection error (notifications):', errorObject?.message || String(err) || 'Unknown connection error');
     };
 
     socket.on('notification', handleNotification);
