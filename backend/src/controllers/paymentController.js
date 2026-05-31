@@ -127,6 +127,7 @@ exports.initiatePayment = async (req, res) => {
           product_code: ESEWA_PRODUCT_CODE,
           product_service_charge: 0,
           product_delivery_charge: 0,
+
           success_url: `${frontendUrl}/user/bookings/payment-success`,
           failure_url: `${frontendUrl}/user/bookings/payment-failure`,
           signed_field_names: signedFieldNames,
@@ -138,6 +139,14 @@ exports.initiatePayment = async (req, res) => {
     console.error('Payment initiation error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to initiate payment', error: error.message });
   }
+};
+
+// Helper to extract raw JSON values directly from the JSON string to preserve exact decimal formatting for signature verification
+const getRawJsonFieldValue = (jsonStr, field) => {
+  const regex = new RegExp(`"${field}"\\s*:\\s*(?:"([^"]*)"|([^,\\s}]+))`);
+  const match = jsonStr.match(regex);
+  if (!match) return null;
+  return match[1] !== undefined ? match[1] : match[2];
 };
 
 // @desc    Verify eSewa payment (called after redirect back)
@@ -160,9 +169,10 @@ exports.verifyPayment = async (req, res) => {
 
     // Decode base64 response from eSewa
     let paymentData;
+    let decodedStr;
     try {
       const normalizedEncodedData = normalizeEsewaPayload(encodedData);
-      const decodedStr = Buffer.from(normalizedEncodedData, 'base64').toString('utf-8');
+      decodedStr = Buffer.from(normalizedEncodedData, 'base64').toString('utf-8');
       paymentData = JSON.parse(decodedStr);
     } catch (_parseErr) {
       return res.status(400).json({ success: false, message: 'Invalid payment data format' });
@@ -190,7 +200,11 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment signature is missing required fields' });
     }
 
-    const signatureMessage = fields.map((field) => `${field}=${paymentData[field]}`).join(',');
+    // Construct signature message by extracting raw values from decodedStr to preserve float representations (e.g. 1000.0)
+    const signatureMessage = fields.map((field) => {
+      const rawVal = getRawJsonFieldValue(decodedStr, field);
+      return `${field}=${rawVal !== null ? rawVal : paymentData[field]}`;
+    }).join(',');
     const expectedSignature = generateEsewaSignature(signatureMessage);
     if (!safeEquals(expectedSignature, signature)) {
       return res.status(400).json({ success: false, message: 'Payment signature verification failed' });
@@ -206,9 +220,10 @@ exports.verifyPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found for this payment' });
     }
 
-    // SECURITY: Enforce that the caller is the booking tourist or an admin.
-    // Route now requires full auth, so req.user is always present.
-    if (booking.tourist.toString() !== req.user.id && req.user.role !== 'admin') {
+    // SECURITY: Enforce that the caller is the booking tourist or an admin if they are logged in.
+    // If they are not logged in (e.g., because of browser cookie block/expiration on redirect), 
+    // the valid cryptographic signature verified above is sufficient proof of payment to mark the booking paid.
+    if (req.user && booking.tourist.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to verify payment for this booking'
@@ -230,7 +245,7 @@ exports.verifyPayment = async (req, res) => {
       esewaStatus = await axios.get(ESEWA_STATUS_URL, {
         params: {
           product_code: ESEWA_PRODUCT_CODE,
-          total_amount,
+          total_amount: paidAmount, // Use normalized integer value matching what was initiated
           transaction_uuid,
         },
         headers: { 'Accept': 'application/json' },

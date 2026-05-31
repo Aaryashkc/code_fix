@@ -134,6 +134,65 @@ describe('Payment verification security', () => {
     expect((await Booking.findById(booking._id)).paymentStatus).toBe('pending');
   });
 
+  it('successfully verifies a correctly signed eSewa payment with auth context', async () => {
+    axios.get.mockResolvedValueOnce({ data: { status: 'COMPLETE' } });
+
+    const response = await request(app)
+      .post('/api/payments/verify')
+      .set('Cookie', [`token=${touristToken}`])
+      .send({ encodedData: signedCallback() })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('Payment verified successfully');
+    expect((await Booking.findById(booking._id)).paymentStatus).toBe('paid');
+  });
+
+  it('successfully verifies a correctly signed eSewa payment without auth context (guest context)', async () => {
+    axios.get.mockResolvedValueOnce({ data: { status: 'COMPLETE' } });
+
+    const response = await request(app)
+      .post('/api/payments/verify')
+      .send({ encodedData: signedCallback() })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('Payment verified successfully');
+    expect((await Booking.findById(booking._id)).paymentStatus).toBe('paid');
+  });
+
+  it('successfully verifies a correctly signed eSewa payment with decimals in total_amount', async () => {
+    axios.get.mockResolvedValueOnce({ data: { status: 'COMPLETE' } });
+
+    // Mock a callback with a float value '2000.00'
+    const signedFieldNames = 'transaction_uuid,total_amount,product_code,status';
+    const paymentData = {
+      transaction_uuid: booking.paymentPidx,
+      transaction_code: 'provider-code',
+      status: 'COMPLETE',
+      total_amount: '2000.00',
+      product_code: process.env.ESEWA_PRODUCT_CODE,
+      signed_field_names: signedFieldNames,
+    };
+    const message = `transaction_uuid=${paymentData.transaction_uuid},total_amount=2000.00,product_code=${paymentData.product_code},status=${paymentData.status}`;
+    paymentData.signature = crypto
+      .createHmac('sha256', process.env.ESEWA_SECRET_KEY)
+      .update(message)
+      .digest('base64');
+    
+    // Construct raw JSON string with exact decimal representation
+    const jsonStr = `{"transaction_uuid":"${paymentData.transaction_uuid}","transaction_code":"provider-code","status":"COMPLETE","total_amount":2000.00,"product_code":"${paymentData.product_code}","signed_field_names":"${signedFieldNames}","signature":"${paymentData.signature}"}`;
+    const encodedData = Buffer.from(jsonStr).toString('base64');
+
+    const response = await request(app)
+      .post('/api/payments/verify')
+      .send({ encodedData })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect((await Booking.findById(booking._id)).paymentStatus).toBe('paid');
+  });
+
   it('does not let a guide mark an eSewa booking as paid cash', async () => {
     const response = await request(app)
       .post('/api/payments/confirm-cash')
