@@ -2,6 +2,7 @@
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { authUtils } from '@/lib/auth';
+import { toast } from 'sonner';
 
 type RegisterPayload = Record<string, unknown>;
 
@@ -77,14 +78,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (retryCount = 0) => {
     try {
       const currentUser = await authUtils.getCurrentUser();
       setUser(currentUser);
-    } catch {
-      setUser(null);
-    } finally {
+      
+      if (currentUser) {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('wasLoggedIn', 'true');
+        }
+      } else {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('wasLoggedIn');
+        }
+      }
       setIsLoading(false);
+    } catch (error: any) {
+      const wasLoggedIn = typeof window !== 'undefined' && window.localStorage.getItem('wasLoggedIn') === 'true';
+      
+      // If the user was logged in and we hit a network/server error, retry in dev/local
+      if (wasLoggedIn && retryCount < 5) {
+        console.warn(`Connection to server failed. Retrying... (${retryCount + 1}/5)`);
+        
+        // Show a reconnecting toast on first failure
+        if (retryCount === 0) {
+          toast.error('Connection lost. Trying to reconnect to server...');
+        }
+        
+        setTimeout(() => {
+          fetchUser(retryCount + 1);
+        }, 2000);
+      } else {
+        setUser(null);
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('wasLoggedIn');
+        }
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -98,6 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { user: loggedInUser } = await authUtils.login(email, password, rememberMe);
       setUser(loggedInUser);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('wasLoggedIn', 'true');
+      }
       router.push(getDashboardRoute(loggedInUser?.role));
     } catch (error: unknown) {
       throw new Error(getAuthErrorMessage(error, 'Login failed'));
@@ -108,6 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { user: newUser } = await authUtils.register(data);
       setUser(newUser);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('wasLoggedIn', 'true');
+      }
       router.push(getDashboardRoute(newUser?.role));
     } catch (error: unknown) {
       throw new Error(getAuthErrorMessage(error, 'Registration failed'));
@@ -121,6 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ignore logout API errors - clean up client state regardless
     } finally {
       setUser(null);
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('wasLoggedIn');
+      }
       router.push('/');
     }
   };

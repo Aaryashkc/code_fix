@@ -49,15 +49,20 @@ export const authUtils = {
     try {
       const response = await api.get<CurrentUserResponse>('/auth/me');
       return normalizeAuthUser(response.data.data);
-    } catch {
-      return null;
+    } catch (error: any) {
+      // If the server explicitly rejected the credentials, return null (unauthenticated)
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        return null;
+      }
+      // If it's a network error or 5xx server error, throw the error
+      // so the context knows NOT to clear the active session.
+      throw error;
     }
   },
 
   // Login with credentials (server sets httpOnly cookie — no localStorage)
   async login(email: string, password: string, rememberMe: boolean): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/login', { email, password, rememberMe });
-    // Token is delivered via httpOnly cookie by the server — do NOT store in localStorage
     // as that would expose it to XSS. The cookie is sent automatically by the browser.
     return {
       ...response.data,
